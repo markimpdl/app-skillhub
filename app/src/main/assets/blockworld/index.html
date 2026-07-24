@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Blockcraft 3D: Cage Rescue</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#4a7a3a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Blockcraft">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="icon" href="./icon-192.png">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;background:#87ceeb;font-family:'Courier New',monospace;color:#eee;overflow:hidden;user-select:none;}
+  #app{position:fixed;inset:0;}
+  canvas{display:block;}
+  #hud{position:absolute;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;pointer-events:none;text-shadow:2px 2px 0 #000;font-size:15px;z-index:3;}
+  #hud .panel{background:rgba(0,0,0,0.45);padding:8px 12px;border:2px solid #2b2b33;border-radius:4px;}
+  .bar{width:160px;height:14px;background:#333;border:2px solid #000;margin-top:3px;}
+  .bar>i{display:block;height:100%;}
+  #hpbar>i{background:#d33;} #firebar>i{background:#f90;}
+  #hotbar{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:5px;pointer-events:none;z-index:3;}
+  .slot{width:54px;height:54px;background:rgba(0,0,0,0.5);border:3px solid #555;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:22px;position:relative;}
+  .slot.sel{border-color:#fff;background:rgba(255,255,255,0.15);}
+  .slot .cnt{position:absolute;bottom:1px;right:4px;font-size:12px;text-shadow:1px 1px 0 #000;}
+  .slot .nm{font-size:8px;position:absolute;bottom:-14px;color:#ccc;text-shadow:1px 1px 0 #000;white-space:nowrap;}
+  #msg{position:absolute;bottom:92px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);padding:6px 16px;border-radius:4px;font-size:15px;opacity:0;transition:opacity .3s;text-align:center;z-index:3;}
+  #cross{position:absolute;top:50%;left:50%;width:22px;height:22px;transform:translate(-50%,-50%);pointer-events:none;z-index:3;opacity:.8;}
+  #cross:before,#cross:after{content:'';position:absolute;background:#fff;box-shadow:0 0 2px #000;}
+  #cross:before{left:10px;top:2px;width:2px;height:18px;}
+  #cross:after{top:10px;left:2px;height:2px;width:18px;}
+  #mini{position:absolute;bottom:12px;right:12px;background:rgba(0,0,0,0.5);border:2px solid #000;border-radius:4px;z-index:3;}
+  #minilbl{position:absolute;bottom:184px;right:14px;font-size:11px;color:#ffd257;text-shadow:1px 1px 0 #000;z-index:3;}
+  #craft{position:absolute;top:60px;right:10px;width:230px;background:rgba(0,0,0,0.82);border:3px solid #444;border-radius:6px;padding:10px;font-size:12px;display:none;z-index:5;}
+  #craft h3{font-size:14px;margin-bottom:8px;text-align:center;color:#ffd257;}
+  .recipe{padding:6px;border:2px solid #333;border-radius:4px;margin-bottom:5px;cursor:pointer;}
+  .recipe:hover{background:rgba(255,255,255,0.1);} .recipe.can{border-color:#6ab04c;}
+  .recipe .r-name{font-weight:bold;} .recipe .r-cost{color:#bbb;font-size:11px;}
+  #hint{position:absolute;top:60px;left:10px;background:rgba(0,0,0,0.4);padding:6px 10px;border-radius:4px;font-size:12px;line-height:1.6;z-index:3;}
+  #flash{position:absolute;inset:0;background:red;opacity:0;pointer-events:none;z-index:4;transition:opacity .15s;}
+  #pause{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);z-index:6;font-size:22px;cursor:pointer;text-shadow:2px 2px 0 #000;}
+  #overlay{position:absolute;inset:0;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;z-index:10;}
+  #overlay h1{font-size:40px;margin-bottom:10px;color:#8fd14f;text-shadow:3px 3px 0 #000;}
+  #overlay p{max-width:640px;line-height:1.7;margin-bottom:8px;font-size:15px;}
+  #overlay .keys{color:#ffd257;}
+  #overlay button{margin-top:20px;font-family:inherit;font-size:20px;padding:12px 30px;background:#6ab04c;color:#fff;border:3px solid #000;border-radius:6px;cursor:pointer;}
+  #menu{margin-top:14px;display:flex;flex-direction:column;gap:10px;align-items:center;}
+  .mrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;}
+  .mlabel{width:88px;text-align:right;color:#ffd257;font-size:14px;}
+  .mbtn{font-family:inherit;font-size:15px;padding:8px 14px;background:rgba(255,255,255,0.1);color:#fff;border:3px solid #555;border-radius:8px;cursor:pointer;margin-top:0;}
+  .mbtn.on{border-color:#8fd14f;background:rgba(143,209,79,0.25);}
+  .mnote{max-width:560px;font-size:12px;color:#aaa;text-align:center;line-height:1.5;}
+  #overlay button:hover{background:#7ec758;}
+  #err{color:#f77;font-size:13px;margin-top:14px;max-width:600px;}
+  /* ---- touch controls (shown only on touch devices) ---- */
+  #touch{display:none;}
+  body.touch #touch{display:block;}
+  body.touch #hint{display:none;}
+  #lookpad{position:fixed;inset:0;z-index:1;touch-action:none;}
+  #joy{position:fixed;left:22px;bottom:22px;width:132px;height:132px;border-radius:50%;
+       background:rgba(255,255,255,0.10);border:2px solid rgba(255,255,255,0.35);z-index:5;touch-action:none;}
+  #knob{position:absolute;left:41px;top:41px;width:50px;height:50px;border-radius:50%;
+        background:rgba(255,255,255,0.45);border:2px solid #fff;transition:transform .03s;}
+  .tbcol{position:fixed;z-index:6;display:flex;gap:12px;}
+  #tbtns{right:16px;bottom:16px;flex-direction:column;align-items:center;}   /* actions: bottom-right corner */
+  #tbtns .row{display:flex;gap:12px;}
+  #tbtns2{left:12px;top:120px;flex-direction:column;}                        /* utility: left edge column */
+  body.touch #mini{top:8px;left:50%;transform:translateX(-50%);bottom:auto;right:auto;}  /* map: top-center */
+  body.touch #minilbl{display:none;}
+  /* item bag: a clear, easy-to-touch box lifted above the iPad home-indicator zone */
+  body.touch #hotbar{bottom:calc(26px + env(safe-area-inset-bottom));z-index:8;gap:8px;
+    background:rgba(0,0,0,0.4);padding:8px 10px 20px;border:2px solid #666;border-radius:14px;pointer-events:auto;}
+  body.touch .slot{width:62px;height:62px;font-size:28px;pointer-events:auto;}
+  .slot{touch-action:manipulation;}
+  .tb{width:64px;height:64px;border-radius:50%;font-size:26px;background:rgba(0,0,0,0.5);
+      color:#fff;border:2px solid rgba(255,255,255,0.45);touch-action:none;-webkit-user-select:none;user-select:none;}
+  .tb.big{width:78px;height:78px;font-size:30px;background:rgba(120,40,40,0.6);}
+  .tb2{width:48px;height:48px;border-radius:50%;font-size:20px;background:rgba(0,0,0,0.45);
+       color:#fff;border:2px solid rgba(255,255,255,0.4);touch-action:none;}
+  .tb:active,.tb2:active{background:rgba(255,255,255,0.3);}
+  /* ---- character designer ---- */
+  #design{display:none;position:fixed;left:16px;top:50%;transform:translateY(-50%);
+    width:300px;max-height:88vh;overflow:auto;background:rgba(0,0,0,0.82);border:3px solid #555;
+    border-radius:10px;padding:14px;z-index:9;}
+  #design h3{color:#ffd257;text-align:center;margin-bottom:10px;font-size:16px;}
+  .drow{margin-bottom:12px;}
+  .drow>.lbl{font-size:13px;margin-bottom:5px;color:#eee;}
+  .drow .sws{display:flex;gap:8px;flex-wrap:wrap;}
+  .sw{width:38px;height:38px;border-radius:8px;border:3px solid rgba(255,255,255,0.25);cursor:pointer;}
+  .sw.on{border-color:#fff;box-shadow:0 0 8px #fff;}
+  .opt{padding:8px 14px;border-radius:8px;border:3px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.08);
+    color:#fff;font-family:inherit;font-size:13px;cursor:pointer;}
+  .opt.on{border-color:#fff;background:rgba(255,255,255,0.28);}
+  #designDone{width:100%;margin-top:6px;font-family:inherit;font-size:17px;padding:10px;
+    background:#6ab04c;color:#fff;border:3px solid #000;border-radius:8px;cursor:pointer;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<!-- Always-on fatal error banner: turns a silent black screen into a readable message on the device. -->
+<div id="fatal" style="display:none;position:fixed;inset:0;z-index:99999;background:#1b0d0d;color:#ffd7d7;font:14px/1.5 monospace;padding:18px;overflow:auto;white-space:pre-wrap;-webkit-user-select:text;user-select:text;"></div>
+<script>
+(function(){
+  function showFatal(msg){
+    var f=document.getElementById('fatal');
+    if(!f) return;
+    f.style.display='block';
+    f.textContent=(f.textContent?f.textContent+'\n\n':'')+msg;
+  }
+  window.__showFatal=showFatal;
+  window.addEventListener('error', function(e){
+    var m=e && e.message ? e.message : 'script error';
+    var src=e && e.filename ? (' @ '+e.filename+':'+e.lineno) : '';
+    showFatal('JS ERROR: '+m+src);
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    showFatal('PROMISE REJECTION: '+((e && e.reason && e.reason.message)||e.reason||'unknown'));
+  });
+})();
+</script>
+
+<div id="hud">
+  <div class="panel">
+    <div>❤️ Health <span id="hptxt"></span></div>
+    <div class="bar" id="hpbar"><i style="width:100%"></i></div>
+    <div style="margin-top:6px">🔥 Campfire <span id="firetxt">0</span>/100</div>
+    <div class="bar" id="firebar"><i style="width:0%"></i></div>
+  </div>
+  <div class="panel" style="text-align:right">
+    <div id="clock">☀️ Day 1</div>
+    <div id="rescued">🧒 Kids rescued: 0 / 4</div>
+    <div id="light" style="color:#888">🔦 Flashlight: off</div>
+  </div>
+</div>
+
+<div id="hint">
+  <b>Mouse</b> or <b>← →</b> look · <b>WASD</b> move · <b>↑</b> jump<br>
+  <b>Space</b>/<b>Left-click</b> dig · <b>E</b> interact · <b>R</b> open cage · <b>G</b> carry · <b>7</b> drop kid (camp)<br>
+  <b>Esc</b> pause · <b>C</b> craft · <b>1-8</b> select · <b>F</b> flashlight · <b>M</b> map · <b>V</b> view (see yourself)
+</div>
+
+<div id="cross"></div>
+<div id="craft"><h3>⚒️ Crafting (press C)</h3><div id="recipes"></div></div>
+<div id="hotbar"></div>
+<div id="msg"></div>
+<div id="minilbl">🗺️ MAP (M)</div>
+<canvas id="mini" width="168" height="168"></canvas>
+<div id="flash"></div>
+<div id="pause">⏸ Paused<br><span style="font-size:15px;color:#ffd257">Press Esc again (or click) to resume</span></div>
+
+<div id="touch">
+  <div id="lookpad"></div>
+  <div id="joy"><div id="knob"></div></div>
+  <div class="tbcol" id="tbtns">
+    <div class="row">
+      <button class="tb" data-act="jump" title="Jump">↑</button>
+      <button class="tb" data-act="interact" title="Interact">✋</button>
+      <button class="tb" data-act="mine" title="Cut stone / mine">🪨</button>
+    </div>
+    <div class="row">
+      <button class="tb" data-act="rescue" title="Open cage">🔑</button>
+      <button class="tb big" data-act="dig" title="Dig / hit">⛏️</button>
+      <button class="tb" data-act="carry" title="Carry / drop kid">🧒</button>
+    </div>
+  </div>
+  <div class="tbcol" id="tbtns2">
+    <button class="tb2" data-act="craft" title="Craft">⚒️</button>
+    <button class="tb2" data-act="flash" title="Flashlight">🔦</button>
+    <button class="tb2" data-act="view" title="View">📷</button>
+    <button class="tb2" data-act="design" title="Design character">🎨</button>
+    <button class="tb2" data-act="sound" title="Sound on/off">🔊</button>
+    <button class="tb2" data-act="restart" title="Restart game">🔄</button>
+    <button class="tb2" data-act="prevtool" title="Previous tool">◀</button>
+    <button class="tb2" data-act="nexttool" title="Next tool">▶</button>
+    <button class="tb2" data-act="map" title="Map">🗺️</button>
+    <button class="tb2" data-act="pause" title="Pause">⏸</button>
+  </div>
+</div>
+
+<div id="design">
+  <h3>🎨 Design your character</h3>
+  <div id="designRows"></div>
+  <button id="designDone">✓ Done</button>
+</div>
+
+<div id="overlay">
+  <h1>🌲 BLOCKCRAFT 3D 🐺</h1>
+  <p>A first-person blocky wilderness. <b>4 children</b> are trapped in cages guarded by wolves,
+  red-eyed wolves, bears, and lions.</p>
+  <p>Chop <b>wood</b>, mine <b>iron</b>, smelt it at the <b>Machine</b>, and feed the <b>campfire</b> to 100.
+  Open <b>chests</b> (yellow), <b>red</b> (rare) and <b>blue</b> (hammer!) to grow your bag.</p>
+  <p>By day hunt <b>rabbits</b>; by <b>night</b> deer attack — use the <b>flashlight</b>, or defeat & <b>feed</b> one to tame it.</p>
+  <p><span class="keys">Goal: survive to Day 200 to win — rescuing all 4 kids (press R near a cage) is a bonus, keep playing after! Your 🏠 safe base (blue ring by the campfire) keeps enemies out. Craft a 🗺️ Map to reveal cages; get a flashlight at the 🗼 light house.</span></p>
+  <div id="menu">
+    <div class="mrow"><span class="mlabel">Players</span>
+      <button class="mbtn on" data-mode="alone">🙂 Alone</button>
+      <button class="mbtn" data-mode="robots">👥 With Robots</button></div>
+    <div class="mrow"><span class="mlabel">Difficulty</span>
+      <button class="mbtn" data-diff="easy">😀 Easy</button>
+      <button class="mbtn on" data-diff="medium">😐 Medium</button>
+      <button class="mbtn" data-diff="hard">😈 Hard</button></div>
+    <div class="mnote">Easy: smaller map, weak enemies, full mini-map. Hard: huge map, tough enemies, mini-map reveals only what you explore.</div>
+  </div>
+  <button id="startBtn">▶ Loading 3D…</button>
+  <div id="err"></div>
+</div>
+
+<script src="three.min.js"></script>
+<script>
+window.addEventListener('load', ()=>{
+if(typeof THREE==='undefined'){
+  document.getElementById('err').textContent='Could not load the 3D library (needs an internet connection). Please reconnect and reload.';
+  return;
+}
+const startBtn=document.getElementById('startBtn');
+startBtn.textContent='▶ Start Game'; startBtn.disabled=false;
+
+// ================= CONSTANTS =================
+let MAPW=240, MAPH=240;   // set per difficulty in start()
+const DIFF={ easy:{size:140,hpM:0.6,dmgM:0.6,revealAll:true}, medium:{size:240,hpM:1.0,dmgM:1.0,revealAll:false}, hard:{size:340,hpM:1.6,dmgM:1.5,revealAll:false} };
+let difficulty='medium', gameMode='alone', diff={hpM:1,dmgM:1,revealAll:false};
+const GRASS=0,WATER=1,STONE=2,TREE=3,ORE=4,SAND=5,DARKGRASS=6,WALL=7;
+const SOLID={[WATER]:1,[STONE]:1,[TREE]:1,[ORE]:1,[WALL]:1};
+const PLACEABLE={[GRASS]:1,[DARKGRASS]:1,[SAND]:1};
+const EYE=1.6, REACH=4.2, PR=0.32, DAYLEN=110;
+let BASE={x:MAPW/2, z:MAPH/2, r:7};   // safe home base (updated per map size in start)
+let explored=null, revealCanvas=null;   // fog-of-war for medium/hard
+let bots=[], owl=null;   // CPU players & the owl pet
+
+const ITEMS={
+  wood:{icon:'🪵',name:'Wood'}, stone:{icon:'🪨',name:'Stone'},
+  iron_ore:{icon:'⛏️',name:'Iron Ore'}, iron:{icon:'🔩',name:'Iron'},
+  meat:{icon:'🍖',name:'Meat'},
+  axe:{icon:'<svg viewBox="0 0 32 32" width="1em" height="1em" style="display:block"><line x1="8" y1="26" x2="21" y2="7" stroke="#9c6b3f" stroke-width="3.2" stroke-linecap="round"/><path d="M19 4 C25 5 28 9 27 14 C22 13 18 10 16 6 Z" fill="#d7dae0" stroke="#7f858e" stroke-width="1.2" stroke-linejoin="round"/></svg>',name:'Axe',tool:1}, pickaxe:{icon:'⚒️',name:'Pickaxe',tool:1},
+  sword:{icon:'🗡️',name:'Sword',tool:1}, flashlight:{icon:'🔦',name:'Flashlight',tool:1},
+  bandage:{icon:'🩹',name:'Bandage',tool:1}, wall:{icon:'🧱',name:'Wall'},
+  hammer:{icon:'🔨',name:'Hammer',tool:1}, map:{icon:'🗺️',name:'Map',tool:1},
+};
+const RECIPES=[
+  {out:'axe',need:{wood:3}}, {out:'pickaxe',need:{wood:3,stone:1}},
+  {out:'sword',need:{wood:2,iron:1}}, {out:'flashlight',need:{iron:2,wood:1}},
+  {out:'bandage',need:{wood:2,meat:1}}, {out:'wall',need:{stone:3},count:3},
+  {out:'map',need:{wood:2,iron:1}},
+];
+const MOB_STATS={
+  rabbit:{hp:6,spd:3.0,dmg:0,size:0.55,color:0xe8e0d0,friendly:1},
+  deer:{hp:22,spd:3.1,dmg:9,size:1.0,color:0xb5793f,night:1},
+  wolf:{hp:16,spd:3.0,dmg:8,size:0.8,color:0x9a9a9a,guard:1},
+  wolf_red:{hp:26,spd:3.7,dmg:12,size:0.8,color:0xb04040,guard:1,redeye:1},
+  bear:{hp:45,spd:2.4,dmg:16,size:1.25,color:0x7a4a24,guard:1},
+  lion:{hp:60,spd:3.2,dmg:20,size:1.15,color:0xd9a441,guard:1,redeye:1},
+};
+const CAGE_DEFS=[
+  {guard:'wolf',n:2,color:'#888'}, {guard:'wolf_red',n:3,color:'#c44'},
+  {guard:'bear',n:2,color:'#742'}, {guard:'lion',n:2,color:'#da3'},
+];
+
+// ================= STATE =================
+let renderer,scene,camera,clock,raycaster;
+let groundMesh, sun, hemi, amb, spot, miniTerrainCanvas=null;
+let map=[], blockMap={}; // "x,z" -> {root,type}
+const RENDER_R=28; let lastChunkTile=null;   // only blocks within RENDER_R tiles of the player are meshed
+let structures=[], mobs=[], kids=[], drops=[], particles=[];
+let inv=[], bagSize=4, sel=0, player, keys={}, carriedKid=null;
+let playerMesh=null, thirdPerson=false, designOpen=false;
+let look=loadLook();
+function loadLook(){ try{ const o=JSON.parse(localStorage.getItem('bc_look')); if(o&&o.shirt!=null) return Object.assign({girl:false,longHair:false},o); }catch(e){} return {shirt:0x3a86c9,skin:0xe8b98f,hair:0x4a2f1a,legs:0x2b4a6a,girl:false,longHair:false}; }
+function saveLook(){ try{ localStorage.setItem('bc_look',JSON.stringify(look)); }catch(e){} }
+const PAL={
+  shirt:[0x3a86c9,0xd0392b,0x2e9e4b,0xe8b53a,0x8e44ad,0xe67e22,0x1c1c1c,0xecf0f1],
+  skin:[0xffe0bd,0xe8b98f,0xc68642,0x8d5524,0x5a3a1a],
+  hair:[0x111111,0x4a2f1a,0xe0c060,0xb0402a,0x999999,0x3a6ea5],
+  legs:[0x2b4a6a,0x1c1c1c,0x5a3a1a,0x777777,0x2e6b3a,0x6a3d6a]
+};
+let touchMoveVec={x:0,y:0};   // set by the on-screen joystick
+const TOUCH=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+function reqLock(){ if(TOUCH)return; try{ if(renderer&&renderer.domElement.requestPointerLock) renderer.domElement.requestPointerLock(); }catch(e){} }
+
+// ================= AUDIO (synthesized, no files) =================
+let actx=null, muted=(localStorage.getItem('bc_mute')==='1');
+function audioInit(){ if(actx)return; try{ actx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+function audioResume(){ if(actx&&actx.state==='suspended') actx.resume(); }
+function tone(freq,dur,type,vol,slideTo){ if(muted||!actx)return; const t=actx.currentTime;
+  const o=actx.createOscillator(), g=actx.createGain();
+  o.type=type||'square'; o.frequency.setValueAtTime(freq,t);
+  if(slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(1,slideTo),t+dur);
+  g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol||0.18,t+0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t+dur+0.02); }
+function noise(dur,vol,filt){ if(muted||!actx)return; const t=actx.currentTime;
+  const n=Math.max(1,Math.floor(actx.sampleRate*dur)), buf=actx.createBuffer(1,n,actx.sampleRate), d=buf.getChannelData(0);
+  for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+  const src=actx.createBufferSource(); src.buffer=buf; const g=actx.createGain(); g.gain.value=vol||0.18;
+  if(filt){ const f=actx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=filt; src.connect(f); f.connect(g); } else src.connect(g);
+  g.connect(actx.destination); src.start(t); }
+function seq(arr,gap,type,vol){ arr.forEach((f,i)=>setTimeout(()=>tone(f,gap/1000*1.4,type||'triangle',vol||0.2),i*gap)); }
+const sfx={
+  chop(){ noise(0.12,0.3,900); tone(170,0.12,'square',0.14,110); },
+  mine(){ noise(0.09,0.22,2600); tone(330,0.08,'square',0.12,230); },
+  thud(){ noise(0.1,0.3,520); },
+  hit(){ noise(0.06,0.3,3200); tone(420,0.06,'sawtooth',0.14,200); },
+  hurt(){ tone(300,0.25,'sawtooth',0.24,80); noise(0.12,0.18,1200); },
+  chest(){ seq([523,659,784,1047],70,'triangle',0.2); },
+  pickup(){ tone(880,0.08,'triangle',0.16,1250); },
+  craft(){ tone(440,0.1,'square',0.16); setTimeout(()=>tone(660,0.12,'square',0.16),90); },
+  rescue(){ seq([659,784,988,1319],110,'triangle',0.22); },
+  fire(){ noise(0.28,0.2,650); },
+  smelt(){ noise(0.34,0.16,950); },
+  click(){ tone(620,0.05,'square',0.14); },
+  jump(){ tone(300,0.12,'square',0.14,620); },
+  win(){ seq([523,659,784,1047,1319],150,'triangle',0.25); },
+  lose(){ seq([400,330,262,196],170,'sawtooth',0.22); }
+};
+sfx.step=()=>{ noise(0.05,0.11,350); };
+sfx.nearKid=()=>{ tone(880,0.12,'sine',0.16); setTimeout(()=>tone(1175,0.13,'sine',0.16),130); };
+let wind=null, windGain=null, ambT=2, stepT=0, inBasePrev=false, kidWarnT=0;
+function startAmbient(){ if(!actx||wind)return; try{
+  const len=Math.floor(actx.sampleRate*2), buf=actx.createBuffer(1,len,actx.sampleRate), d=buf.getChannelData(0);
+  for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
+  wind=actx.createBufferSource(); wind.buffer=buf; wind.loop=true;
+  const f=actx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=450;
+  windGain=actx.createGain(); windGain.gain.value=0;
+  wind.connect(f); f.connect(windGain); windGain.connect(actx.destination); wind.start();
+}catch(e){} }
+function cricket(){ if(muted||!actx)return; for(let i=0;i<3;i++) setTimeout(()=>tone(2600+Math.random()*200,0.03,'square',0.05),i*55); }
+function bird(){ if(muted||!actx)return; tone(2000,0.08,'sine',0.05,2600); setTimeout(()=>tone(2400,0.08,'sine',0.05,2000),120); }
+['touchstart','pointerdown','keydown'].forEach(ev=>window.addEventListener(ev,()=>{ audioInit(); audioResume(); startAmbient(); }));
+function toggleSound(){ muted=!muted; try{localStorage.setItem('bc_mute',muted?'1':'0');}catch(e){}
+  const b=document.querySelector('#touch button[data-act=sound]'); if(b) b.textContent=muted?'🔇':'🔊';
+  if(!muted){ audioInit(); audioResume(); sfx.click(); } msg(muted?'🔇 Sound off':'🔊 Sound on'); }
+{ const b=document.querySelector('#touch button[data-act=sound]'); if(b) b.textContent=muted?'🔇':'🔊'; }
+let time=0.28, dayNum=1, flashlight=false, fire=0, rescued=0;
+let attackCd=0, msgTimer=0, workCd=0, hurtCd=0;
+let started=false, gameOver=false, locked=false, everLocked=false, paused=false, showMap=true, craftOpen=false;
+
+// ================= TEXTURES =================
+function makeTex(cols){
+  const c=document.createElement('canvas'); c.width=c.height=16; const g=c.getContext('2d');
+  for(let y=0;y<16;y++)for(let x=0;x<16;x++){ g.fillStyle=cols[(Math.random()*cols.length)|0]; g.fillRect(x,y,1,1); }
+  const t=new THREE.CanvasTexture(c); t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter; return t;
+}
+let TEX,MAT;
+function buildMaterials(){
+  TEX={
+    bark:makeTex(['#6b4a2b','#5a3d22','#74532f']),
+    leaf:makeTex(['#2f7d33','#3c9440','#2a6e2d']),
+    stone:makeTex(['#8d8d92','#7d7d82','#9a9a9f']),
+    ore:makeTex(['#8d8d92','#8d8d92','#c9a26b','#d0a86a','#7d7d82']),
+    wall:makeTex(['#a06a34','#8a5a2a','#b5842e']),
+  };
+  MAT={
+    bark:new THREE.MeshLambertMaterial({map:TEX.bark}),
+    leaf:new THREE.MeshLambertMaterial({map:TEX.leaf}),
+    stone:new THREE.MeshLambertMaterial({map:TEX.stone}),
+    ore:new THREE.MeshLambertMaterial({map:TEX.ore}),
+    wall:new THREE.MeshLambertMaterial({map:TEX.wall}),
+  };
+}
+
+// ================= PLAYER AVATAR =================
+function makePlayerMesh(){
+  const g=new THREE.Group();
+  const sMat=()=>new THREE.MeshLambertMaterial({color:look.shirt});
+  const hMat=()=>new THREE.MeshLambertMaterial({color:look.hair});
+  const shirt=[], hairs=[], legs=[];
+  const body=new THREE.Mesh(new THREE.BoxGeometry(look.girl?0.44:0.5,0.6,0.26),sMat()); body.position.y=0.92; g.add(body); shirt.push(body);
+  const head=new THREE.Mesh(new THREE.BoxGeometry(0.36,0.36,0.36),new THREE.MeshLambertMaterial({color:look.skin})); head.position.y=1.42; g.add(head);
+  const topHair=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.16,0.42),hMat()); topHair.position.y=1.6; g.add(topHair); hairs.push(topHair);
+  const eMat=new THREE.MeshBasicMaterial({color:0x111111});
+  [-1,1].forEach(s=>{ const e=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.06,0.04),eMat); e.position.set(s*0.09,1.44,-0.18); g.add(e); });
+  if(look.longHair){   // long hair: flows down the back and sides
+    const back=new THREE.Mesh(new THREE.BoxGeometry(0.44,0.8,0.14),hMat()); back.position.set(0,1.02,0.18); g.add(back); hairs.push(back);
+    [-1,1].forEach(s=>{ const side=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.65,0.4),hMat()); side.position.set(s*0.23,1.15,0.02); g.add(side); hairs.push(side); });
+  } else {             // short hair: small back cap
+    const back=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.22,0.14),hMat()); back.position.set(0,1.42,0.16); g.add(back); hairs.push(back);
+  }
+  [-1,1].forEach(s=>{ const l=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.62,0.2),new THREE.MeshLambertMaterial({color:look.legs})); l.position.set(s*0.13,0.31,0); g.add(l); legs.push(l); });
+  if(look.girl){       // dress / skirt
+    const skirt=new THREE.Mesh(new THREE.ConeGeometry(0.44,0.6,12),sMat()); skirt.position.y=0.64; g.add(skirt); shirt.push(skirt);
+  }
+  [-1,1].forEach(s=>{ const a=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.56,0.14),sMat()); a.position.set(s*(look.girl?0.3:0.33),0.92,0); g.add(a); shirt.push(a); });
+  g.userData.parts={shirt,head,hairs,legs};
+  return g;
+}
+function applyLook(){ if(!playerMesh)return; const p=playerMesh.userData.parts;
+  p.shirt.forEach(m=>m.material.color.setHex(look.shirt));
+  p.head.material.color.setHex(look.skin);
+  p.hairs.forEach(m=>m.material.color.setHex(look.hair));
+  p.legs.forEach(m=>m.material.color.setHex(look.legs)); }
+function rebuildPlayer(){ if(!scene||!playerMesh)return; const vis=playerMesh.visible; scene.remove(playerMesh); playerMesh=makePlayerMesh(); playerMesh.visible=vis; scene.add(playerMesh); }
+
+// ================= INIT 3D =================
+function makeRenderer(){
+  // Some real-device GPUs / WebView builds refuse an antialiased or default context and would
+  // otherwise leave a silent black screen. Try progressively simpler options and report failure.
+  var attempts=[
+    {antialias:true,  powerPreference:'high-performance', failIfMajorPerformanceCaveat:false},
+    {antialias:false, powerPreference:'high-performance', failIfMajorPerformanceCaveat:false},
+    {antialias:false, failIfMajorPerformanceCaveat:false},
+    {antialias:false},
+  ];
+  var lastErr=null;
+  for(var i=0;i<attempts.length;i++){
+    try{ return new THREE.WebGLRenderer(attempts[i]); }
+    catch(e){ lastErr=e; }
+  }
+  // Final probe so we can report exactly why the context could not be created.
+  var probe='';
+  try{
+    var tc=document.createElement('canvas');
+    var gl=tc.getContext('webgl2')||tc.getContext('webgl')||tc.getContext('experimental-webgl');
+    probe=gl?('context ok but THREE failed: '+(lastErr&&lastErr.message)) : 'getContext returned null (WebGL unavailable in this WebView)';
+  }catch(e2){ probe='getContext threw: '+e2.message; }
+  if(window.__showFatal) window.__showFatal('WebGL FAILED\n'+probe);
+  return null;
+}
+function init3D(){
+  renderer=makeRenderer();
+  if(!renderer) return;
+  var cv=renderer.domElement;
+  cv.addEventListener('webglcontextlost', function(ev){ ev.preventDefault(); if(window.__showFatal) window.__showFatal('WebGL CONTEXT LOST — the GPU dropped the drawing context.'); }, false);
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  document.getElementById('app').appendChild(renderer.domElement);
+  scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x87ceeb);
+  scene.fog=new THREE.Fog(0x87ceeb, 12, 29);   // hides the chunk render edge
+  camera=new THREE.PerspectiveCamera(72, innerWidth/innerHeight, 0.05, 200);
+  camera.rotation.order='YXZ';
+  clock=new THREE.Clock();
+  raycaster=new THREE.Raycaster();
+  amb=new THREE.AmbientLight(0xffffff,0.6); scene.add(amb);
+  hemi=new THREE.HemisphereLight(0xbfd9ff,0x4a6a30,0.7); scene.add(hemi);
+  sun=new THREE.DirectionalLight(0xfff2cc,0.8); sun.position.set(20,40,10); scene.add(sun);
+  spot=new THREE.SpotLight(0xfff6c0,0,26,0.5,0.5,1.2); spot.visible=false;
+  camera.add(spot); spot.position.set(0,0,0);
+  spot.target.position.set(0,0,-1); camera.add(spot.target);
+  scene.add(camera);
+  buildMaterials();
+  playerMesh=makePlayerMesh(); playerMesh.visible=false; scene.add(playerMesh);
+  addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+  renderer.domElement.addEventListener('click',()=>{ if(started&&paused){ setPaused(false); return; } if(started&&!locked) reqLock(); });
+  renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+  document.addEventListener('pointerlockchange',()=>{
+    locked=(document.pointerLockElement===renderer.domElement);
+    if(locked) everLocked=true;
+    // a mouse-look player who loses the pointer (e.g. Esc) auto-pauses; keyboard-only play never freezes
+    else if(started&&everLocked&&!gameOver&&!paused) setPaused(true);
+  });
+  document.getElementById('pause').addEventListener('click',()=>{ if(paused) setPaused(false); });
+  document.addEventListener('mousemove',e=>{
+    if(!locked)return;
+    player.yaw   -= e.movementX*0.0024;
+    player.pitch -= e.movementY*0.0024;
+    player.pitch = Math.max(-1.5,Math.min(1.5,player.pitch));
+  });
+  document.addEventListener('mousedown',e=>{
+    if(paused||gameOver)return;
+    if(e.button===0){ if(!locked) reqLock(); useTool(); }  // left-click = dig / hit
+    else if(e.button===2) interact();
+  });
+}
+
+// ================= WORLD GEN =================
+function noise(x,y){ return (Math.sin(x*0.3)*Math.cos(y*0.31)+Math.sin((x+y)*0.17)+Math.cos((x-y)*0.23))/3; }
+function inMap(x,y){ return x>=0&&y>=0&&x<MAPW&&y<MAPH; }
+function genWorld(){
+  map=[];
+  for(let y=0;y<MAPH;y++){ let row=[];
+    for(let x=0;x<MAPW;x++){
+      let n=noise(x,y), t=GRASS;
+      if(n<-0.4)t=WATER; else if(n>0.6)t=STONE;
+      else if(n>0.34&&Math.random()<0.4)t=STONE;
+      else if(n<-0.18)t=SAND;
+      else if(Math.random()<0.09)t=TREE;
+      else if(Math.random()<0.06)t=DARKGRASS;
+      row.push(t);
+    } map.push(row);
+  }
+  for(let y=0;y<MAPH;y++)for(let x=0;x<MAPW;x++) if(map[y][x]===STONE&&Math.random()<0.16) map[y][x]=ORE;
+  const cx=MAPW>>1, cy=MAPH>>1;
+  for(let y=cy-3;y<=cy+3;y++)for(let x=cx-3;x<=cx+3;x++) if(inMap(x,y)) map[y][x]=GRASS;
+}
+function tileRGB(t){
+  if(t===WATER)return [58,114,196]; if(t===SAND)return [217,200,143];
+  if(t===STONE||t===ORE)return [141,141,146]; if(t===WALL)return [160,106,52];
+  if(t===TREE)return [47,125,51]; if(t===DARKGRASS)return [76,138,56];
+  return [90,158,66];
+}
+function buildGround(){
+  // big ground plane (fast ImageData, flat colors)
+  const P=2, cw=MAPW*P, ch=MAPH*P;
+  const c=document.createElement('canvas'); c.width=cw; c.height=ch; const g=c.getContext('2d');
+  const img=g.createImageData(cw,ch), D=img.data;
+  for(let py=0;py<ch;py++){ const tz=(py/P)|0; for(let px2=0;px2<cw;px2++){ const tx=(px2/P)|0;
+    const col=tileRGB(map[tz][tx]); const i=(py*cw+px2)*4; D[i]=col[0]; D[i+1]=col[1]; D[i+2]=col[2]; D[i+3]=255; } }
+  g.putImageData(img,0,0);
+  const tex=new THREE.CanvasTexture(c); tex.magFilter=THREE.NearestFilter; tex.minFilter=THREE.LinearMipmapLinearFilter;
+  const geo=new THREE.PlaneGeometry(MAPW,MAPH); geo.rotateX(-Math.PI/2);
+  groundMesh=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({map:tex}));
+  groundMesh.position.set(MAPW/2,0,MAPH/2); groundMesh.userData.kind='ground'; scene.add(groundMesh);
+  // minimap terrain (1px per tile) — drawn once, blitted each frame
+  miniTerrainCanvas=document.createElement('canvas'); miniTerrainCanvas.width=MAPW; miniTerrainCanvas.height=MAPH;
+  const mg2=miniTerrainCanvas.getContext('2d'); const mim=mg2.createImageData(MAPW,MAPH), MD=mim.data;
+  for(let z=0;z<MAPH;z++)for(let x=0;x<MAPW;x++){ const col=tileRGB(map[z][x]); const i=(z*MAPW+x)*4; MD[i]=col[0]; MD[i+1]=col[1]; MD[i+2]=col[2]; MD[i+3]=255; }
+  mg2.putImageData(mim,0,0);
+}
+function addBlock(tx,tz,type){
+  const key=tx+','+tz; if(blockMap[key])return;
+  let root;
+  if(type===TREE){
+    root=new THREE.Group();
+    const trunk=new THREE.Mesh(new THREE.BoxGeometry(0.55,2.4,0.55),MAT.bark); trunk.position.y=1.2; root.add(trunk);
+    const lv=new THREE.Mesh(new THREE.BoxGeometry(1.6,1.6,1.6),MAT.leaf); lv.position.y=2.9; root.add(lv);
+    // invisible full-column hit box so aiming anywhere on the tree registers a chop
+    const hit=new THREE.Mesh(new THREE.BoxGeometry(1,3.8,1),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false})); hit.position.y=1.9; root.add(hit);
+  } else if(type===WALL){
+    root=new THREE.Mesh(new THREE.BoxGeometry(1,2.2,1),MAT.wall); root.position.y=1.1;
+    root=wrap(root);
+  } else {
+    const m=type===ORE?MAT.ore:MAT.stone;
+    root=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),m); root.position.y=0.5; root=wrap(root);
+  }
+  root.position.x=tx+0.5; root.position.z=tz+0.5;
+  root.userData={kind:'block',tx,tz,type};
+  scene.add(root); blockMap[key]={root,type};
+}
+function wrap(mesh){ const g=new THREE.Group(); mesh.position.x=0; mesh.position.z=0; g.add(mesh); return g; }
+function removeBlock(tx,tz){
+  const key=tx+','+tz, b=blockMap[key]; if(!b)return;
+  scene.remove(b.root); delete blockMap[key];
+}
+// only mesh blocks near the player; add/remove as the player moves (makes a huge map possible)
+function updateChunks(force){
+  if(!player)return;
+  const ptx=Math.floor(player.x), ptz=Math.floor(player.z), key=ptx+','+ptz;
+  if(!force && key===lastChunkTile) return;
+  lastChunkTile=key;
+  reveal(player.x,player.z);   // fog-of-war reveal as you move
+  const R=RENDER_R;
+  for(let z=ptz-R;z<=ptz+R;z++){ if(z<0||z>=MAPH)continue;
+    for(let x=ptx-R;x<=ptx+R;x++){ if(x<0||x>=MAPW)continue;
+      const t=map[z][x];
+      if((t===TREE||t===STONE||t===ORE||t===WALL) && !blockMap[x+','+z]) addBlock(x,z,t); } }
+  const R2=R+3;
+  for(const k in blockMap){ const c=k.indexOf(','), x=+k.slice(0,c), z=+k.slice(c+1);
+    if(Math.abs(x-ptx)>R2||Math.abs(z-ptz)>R2){ scene.remove(blockMap[k].root); delete blockMap[k]; } }
+}
+
+// ================= STRUCTURES =================
+function findOpen(){
+  for(let i=0;i<500;i++){ let x=(Math.random()*MAPW)|0, z=(Math.random()*MAPH)|0;
+    if(map[z][x]===GRASS||map[z][x]===DARKGRASS||map[z][x]===SAND) return {x,z}; }
+  return {x:MAPW>>1,z:MAPH>>1};
+}
+function findHidden(){
+  // prefer open tiles that are tucked against trees/rocks and far from the spawn
+  const cx=MAPW/2, cy=MAPH/2; let best=null, bestScore=-1;
+  for(let i=0;i<60;i++){
+    const p=findOpen();
+    let cover=0;
+    for(const[dx,dz]of[[1,0],[-1,0],[0,1],[0,-1]]){ let nx=p.x+dx,nz=p.z+dz; if(inMap(nx,nz)&&(map[nz][nx]===TREE||map[nz][nx]===STONE||map[nz][nx]===ORE)) cover++; }
+    let dist=Math.hypot(p.x-cx,p.z-cy);
+    let score=cover*3 + dist*0.15 + Math.random();
+    if(score>bestScore){ bestScore=score; best=p; }
+  }
+  return best||findOpen();
+}
+function placeStructures(){
+  const cx=MAPW>>1, cy=MAPH>>1;
+  addStruct('fire', cx-1.5, cy);
+  addStruct('machine', cx+1.5, cy);
+  // light house — visit it to receive a flashlight
+  const lhx=cx, lhz=cy-6;
+  for(let z=lhz-1;z<=lhz+1;z++)for(let x=lhx-1;x<=lhx+1;x++){ if(inMap(x,z)){ map[z][x]=GRASS; removeBlock(x,z); } }
+  addStruct('lighthouse', lhx+0.5, lhz+0.5);
+  addStruct('sign', lhx+1.7, lhz+1.4);   // "Rawdha's World" plaque by the lighthouse
+  // safe-base ring marker on the ground
+  const ring=new THREE.Mesh(new THREE.RingGeometry(BASE.r-0.25,BASE.r+0.08,56),new THREE.MeshBasicMaterial({color:0x66ccff,transparent:true,opacity:0.5,side:THREE.DoubleSide}));
+  ring.rotation.x=-Math.PI/2; ring.position.set(BASE.x,0.07,BASE.z); scene.add(ring);
+  for(let i=0;i<14;i++){ let p=findHidden(); addStruct('chest', p.x+0.5, p.z+0.5); }
+  for(let i=0;i<3;i++){ let p=findHidden(); addStruct('redchest', p.x+0.5, p.z+0.5); }
+  for(let i=0;i<2;i++){ let p=findHidden(); addStruct('bluechest', p.x+0.5, p.z+0.5); }
+}
+function addStruct(type,x,z){
+  const s={type,x,z,used:false}; const g=new THREE.Group(); g.position.set(x,0,z);
+  if(type==='fire'){
+    const logs=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.25,0.9),MAT.bark); logs.position.y=0.12; g.add(logs);
+    const fl=new THREE.Mesh(new THREE.ConeGeometry(0.35,1,8),new THREE.MeshBasicMaterial({color:0xff9020}));
+    fl.position.y=0.7; g.add(fl); s.flame=fl;
+    const light=new THREE.PointLight(0xff8020,1.2,10); light.position.y=1; g.add(light); s.light=light;
+  } else if(type==='machine'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(1,1.1,1),new THREE.MeshLambertMaterial({color:0x555560})); b.position.y=0.55; g.add(b);
+    const p=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.4,0.05),new THREE.MeshBasicMaterial({color:0xe05030})); p.position.set(0,0.5,0.5); g.add(p);
+  } else if(type==='lighthouse'){
+    const tower=new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.8,4,12),new THREE.MeshLambertMaterial({color:0xf2f2f2})); tower.position.y=2; g.add(tower);
+    const stripe=new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.68,0.7,12),new THREE.MeshLambertMaterial({color:0xd83030})); stripe.position.y=2.6; g.add(stripe);
+    const stripe2=new THREE.Mesh(new THREE.CylinderGeometry(0.72,0.78,0.7,12),new THREE.MeshLambertMaterial({color:0xd83030})); stripe2.position.y=1.1; g.add(stripe2);
+    const lamp=new THREE.Mesh(new THREE.BoxGeometry(1,0.8,1),new THREE.MeshBasicMaterial({color:0xffef99})); lamp.position.y=4.4; g.add(lamp); s.lamp=lamp;
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(0.8,0.6,4),new THREE.MeshLambertMaterial({color:0x883322})); roof.position.y=5.1; roof.rotation.y=Math.PI/4; g.add(roof);
+    const light=new THREE.PointLight(0xffef99,1.6,16); light.position.y=4.4; g.add(light); s.light=light;
+  } else if(type==='sign'){
+    const post=new THREE.Mesh(new THREE.BoxGeometry(0.14,1.5,0.14),MAT.bark); post.position.y=0.75; g.add(post);
+    const c=document.createElement('canvas'); c.width=384; c.height=112; const g2=c.getContext('2d');
+    g2.fillStyle='#7a532e'; g2.fillRect(0,0,384,112);
+    g2.strokeStyle='#3a2716'; g2.lineWidth=10; g2.strokeRect(5,5,374,102);
+    g2.fillStyle='#ffe8b0'; g2.font='bold 44px Georgia,serif'; g2.textAlign='center'; g2.textBaseline='middle';
+    g2.fillText("Rawdha's World",192,60);
+    const tex=new THREE.CanvasTexture(c); tex.anisotropy=4;
+    const board=new THREE.Mesh(new THREE.BoxGeometry(2.1,0.62,0.08),new THREE.MeshLambertMaterial({map:tex})); board.position.y=1.6; g.add(board);
+  } else {
+    const col=type==='redchest'?0xd02828:type==='bluechest'?0x2878d0:0xb5842e;
+    const body=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.6,0.6),new THREE.MeshLambertMaterial({color:col})); body.position.y=0.3; g.add(body); s.body=body;
+    const lid=new THREE.Mesh(new THREE.BoxGeometry(0.84,0.18,0.64),new THREE.MeshLambertMaterial({color:col})); lid.position.y=0.68; g.add(lid);
+    const lock=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.16,0.05),new THREE.MeshBasicMaterial({color:0xffd257})); lock.position.set(0,0.5,0.32); g.add(lock);
+  }
+  g.userData={kind:'struct',ref:s};
+  s.mesh=g; scene.add(g); structures.push(s);
+}
+
+// ================= KIDS & CAGES =================
+function randomCageSpot(spots){
+  for(let tries=0;tries<300;tries++){
+    let x=8+((Math.random()*(MAPW-16))|0), z=8+((Math.random()*(MAPH-16))|0);
+    if(map[z][x]===WATER)continue;
+    if(Math.hypot(x-BASE.x,z-BASE.z)<Math.min(30,MAPW*0.2))continue;   // not too close to spawn
+    if(spots.some(s=>Math.hypot(x-s.x,z-s.z)<MAPW*0.25))continue;       // spread the cages apart
+    return {x,z};
+  }
+  return {x:8+((Math.random()*(MAPW-16))|0), z:8+((Math.random()*(MAPH-16))|0)};
+}
+function spawnKidsAndCages(){
+  const spots=[];
+  CAGE_DEFS.forEach((def,i)=>{
+    let s=randomCageSpot(spots); spots.push(s);   // random spot each game
+    for(let z=s.z-2;z<=s.z+2;z++)for(let x=s.x-2;x<=s.x+2;x++){ if(inMap(x,z)){ map[z][x]=DARKGRASS; removeBlock(x,z);} }
+    let k={x:s.x+0.5,z:s.z+0.5,freed:false,def,idx:i};
+    const g=new THREE.Group(); g.position.set(k.x,0,k.z);
+    const kid=new THREE.Mesh(new THREE.BoxGeometry(0.35,0.7,0.35),new THREE.MeshLambertMaterial({color:0xff5aa0})); kid.position.y=0.35; g.add(kid); k.kidMesh=kid;
+    const cageMat=new THREE.MeshBasicMaterial({color:0x333333});
+    const bars=new THREE.Group();
+    for(let a=0;a<4;a++){ const b=new THREE.Mesh(new THREE.BoxGeometry(0.06,1.4,0.06),cageMat);
+      b.position.set(a<2?-0.45:0.45,0.7,(a%2)?-0.45:0.45); bars.add(b); }
+    const top=new THREE.Mesh(new THREE.BoxGeometry(1,0.06,1),cageMat); top.position.y=1.4; bars.add(top);
+    g.add(bars); k.bars=bars;
+    const num=makeLabelSprite((i+1)+'', def.color); num.position.y=1.9; g.add(num);
+    g.userData={kind:'kid',ref:k}; scene.add(g); k.mesh=g; kids.push(k);
+    for(let gi=0;gi<def.n;gi++) spawnMob(def.guard, s.x+(gi-1)+0.5, s.z+1.6);
+  });
+}
+function makeLabelSprite(txt,color){
+  const c=document.createElement('canvas'); c.width=c.height=64; const g=c.getContext('2d');
+  g.fillStyle=color; g.beginPath(); g.arc(32,32,26,0,7); g.fill();
+  g.fillStyle='#fff'; g.font='bold 40px monospace'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(txt,32,34);
+  const t=new THREE.CanvasTexture(c);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t})); sp.scale.set(0.8,0.8,0.8); return sp;
+}
+
+// ================= MOBS =================
+function spawnMob(type,x,z,guardOf){
+  const s=MOB_STATS[type];
+  const hp=Math.round(s.hp*(s.friendly?1:diff.hpM)), dmg=Math.round(s.dmg*diff.dmgM);
+  const m={type,x,z,hp,maxhp:hp,dmg,guardOf:guardOf||null,tamed:false,wx:0,wz:0,wt:0,hitCd:0,scared:0,dead:false};
+  const g=new THREE.Group(); const sz=s.size;
+  const body=new THREE.Mesh(new THREE.BoxGeometry(sz,sz*0.8,sz*1.3),new THREE.MeshLambertMaterial({color:s.color})); body.position.y=sz*0.5; g.add(body); m.body=body;
+  const head=new THREE.Mesh(new THREE.BoxGeometry(sz*0.7,sz*0.7,sz*0.7),new THREE.MeshLambertMaterial({color:s.color})); head.position.set(0,sz*0.75,sz*0.7); g.add(head);
+  const eyeCol=s.redeye?0xff0000:0x111111;
+  const eMat=new THREE.MeshBasicMaterial({color:eyeCol});
+  [-1,1].forEach(sg=>{ const e=new THREE.Mesh(new THREE.BoxGeometry(sz*0.12,sz*0.12,sz*0.05),eMat); e.position.set(sg*sz*0.2,sz*0.85,sz*1.05); g.add(e); });
+  if(type==='rabbit'||type==='deer'){ [-1,1].forEach(sg=>{ const ear=new THREE.Mesh(new THREE.BoxGeometry(sz*0.1,sz*0.5,sz*0.1),new THREE.MeshLambertMaterial({color:s.color})); ear.position.set(sg*sz*0.2,sz*1.2,sz*0.6); g.add(ear); }); }
+  g.userData={kind:'mob',ref:m};
+  m.mesh=g; g.position.set(x,0,z); scene.add(g); mobs.push(m);
+}
+function spawnWildlife(){ for(let i=0;i<10;i++){ let p=findOpen(); spawnMob('rabbit',p.x+0.5,p.z+0.5); } }
+
+// ---- fog of war ----
+function reveal(x,z){ if(!explored)return; const R=13, ptx=Math.floor(x), ptz=Math.floor(z);
+  const g2=revealCanvas.getContext('2d');
+  for(let dz=-R;dz<=R;dz++)for(let dx=-R;dx<=R;dx++){ let tx=ptx+dx, tz=ptz+dz; if(tx<0||tz<0||tx>=MAPW||tz>=MAPH)continue;
+    if(dx*dx+dz*dz>R*R)continue; let idx=tz*MAPW+tx; if(!explored[idx]){ explored[idx]=1; } }
+  // copy the newly-visible box from the terrain into the reveal canvas
+  if(miniTerrainCanvas){ let sx=Math.max(0,ptx-R), sz=Math.max(0,ptz-R), w=Math.min(MAPW,ptx+R+1)-sx, h=Math.min(MAPH,ptz+R+1)-sz;
+    if(w>0&&h>0) g2.drawImage(miniTerrainCanvas, sx,sz,w,h, sx,sz,w,h); }
+}
+function isExplored(x,z){ if(diff.revealAll)return true; if(!explored)return false; let tx=Math.floor(x),tz=Math.floor(z); if(tx<0||tz<0||tx>=MAPW||tz>=MAPH)return false; return !!explored[tz*MAPW+tx]; }
+
+// ---- CPU players (robots that look like players) ----
+function spawnBots(n){
+  for(let i=0;i<n;i++){
+    const look2={shirt:[0xd0392b,0x2e9e4b,0xe8b53a,0x8e44ad,0xe67e22][i%5], skin:0xe8b98f, hair:[0x111111,0x4a2f1a,0xe0c060][i%3], legs:0x2b4a6a, girl:i%2===0, longHair:i%2===0};
+    const savedLook=look; look=look2; const mesh=makePlayerMesh(); look=savedLook;
+    const ang=Math.random()*6.28, r=4+Math.random()*4;
+    const b={x:BASE.x+Math.cos(ang)*r, z:BASE.z+Math.sin(ang)*r, mesh, hitCd:0, wx:0,wz:0,wt:0};
+    mesh.position.set(b.x,0,b.z); scene.add(mesh); bots.push(b);
+  }
+}
+function updateBots(dt){
+  for(const b of bots){ if(b.hitCd>0)b.hitCd-=dt;
+    // find nearest enemy
+    let en=null,bd=14; for(const m of mobs){ if(m.tamed||MOB_STATS[m.type].friendly)continue; let d=Math.hypot(m.x-b.x,m.z-b.z); if(d<bd){bd=d;en=m;} }
+    if(en){ let dx=en.x-b.x,dz=en.z-b.z,d=Math.hypot(dx,dz)||1; moveEntity(b,(dx/d)*3.2*dt,(dz/d)*3.2*dt);
+      if(d<1.3&&b.hitCd<=0){ en.hp-=10; en.hitCd=0.1; b.hitCd=0.5; burst(en.x,1,en.z,0xff5050,4); }
+      b.mesh.rotation.y=Math.atan2(dx,dz);
+    } else { // wander near the player
+      let pdx=player.x-b.x, pdz=player.z-b.z, pd=Math.hypot(pdx,pdz)||1;
+      if(pd>16) moveEntity(b,(pdx/pd)*3.2*dt,(pdz/pd)*3.2*dt);
+      else { b.wt-=dt; if(b.wt<=0){ b.wx=Math.random()*2-1; b.wz=Math.random()*2-1; b.wt=1+Math.random()*2; } moveEntity(b,b.wx*1.5*dt,b.wz*1.5*dt); }
+      if(pd>60){ b.x=player.x+2; b.z=player.z+2; }
+    }
+    b.mesh.position.set(b.x,0,b.z);
+  }
+}
+
+// ---- white flying owl pet ----
+function spawnOwl(){
+  const lh=structures.find(s=>s.type==='lighthouse'); const px=lh?lh.x+2:BASE.x, pz=lh?lh.z:BASE.z-2;
+  const g=new THREE.Group();
+  const wmat=new THREE.MeshLambertMaterial({color:0xf5f5f5});
+  const body=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.4,0.3),wmat); g.add(body);
+  const head=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.26,0.28),wmat); head.position.y=0.32; g.add(head);
+  [-1,1].forEach(s=>{ const ear=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.12,0.07),wmat); ear.position.set(s*0.1,0.46,0); g.add(ear); });
+  [-1,1].forEach(s=>{ const eye=new THREE.Mesh(new THREE.BoxGeometry(0.09,0.09,0.04),new THREE.MeshBasicMaterial({color:0xffcc33})); eye.position.set(s*0.07,0.34,-0.15); g.add(eye); });
+  const beak=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.12,4),new THREE.MeshBasicMaterial({color:0xffaa22})); beak.rotation.x=-Math.PI/2; beak.position.set(0,0.3,-0.2); g.add(beak);
+  const w1=new THREE.Mesh(new THREE.BoxGeometry(0.28,0.06,0.22),wmat); w1.position.set(-0.28,0.08,0); g.add(w1);
+  const w2=new THREE.Mesh(new THREE.BoxGeometry(0.28,0.06,0.22),wmat); w2.position.set(0.28,0.08,0); g.add(w2);
+  g.userData={kind:'owl'};
+  g.position.set(px,3,pz); scene.add(g);
+  owl={x:px,z:pz,mesh:g,adopted:false,wings:[w1,w2]};
+}
+function updateOwl(dt){
+  if(!owl)return; const t=time*40;
+  if(owl.adopted){ // circle above the player
+    let ang=t; owl.x += ((player.x+Math.cos(ang)*2.2) - owl.x)*Math.min(1,dt*3);
+    owl.z += ((player.z+Math.sin(ang)*2.2) - owl.z)*Math.min(1,dt*3);
+    let dx=player.x-owl.x, dz=player.z-owl.z; owl.mesh.rotation.y=Math.atan2(dx,dz)+Math.PI;
+  }
+  owl.mesh.position.set(owl.x, 3.4+Math.sin(t*0.5)*0.25, owl.z);
+  let flap=Math.sin(t*3)*0.5; owl.wings[0].rotation.z=flap; owl.wings[1].rotation.z=-flap;
+}
+
+// ================= INVENTORY =================
+function addItem(item,count){ count=count||1;
+  let ex=inv.find(s=>s.item===item);
+  if(ex&&!ITEMS[item].tool){ex.count+=count;renderHotbar();return true;}
+  if(ex&&ITEMS[item].tool)return false;
+  if(inv.length>=bagSize){msg('Bag full! Find a chest for a bigger bag.');return false;}
+  inv.push({item,count}); renderHotbar(); return true;
+}
+function removeItem(item,count){ count=count||1;
+  let s=inv.find(x=>x.item===item); if(!s||s.count<count)return false;
+  s.count-=count; if(s.count<=0){inv=inv.filter(x=>x!==s); if(sel>=inv.length&&sel>0)sel--;}
+  renderHotbar(); return true;
+}
+function has(i,c){ let s=inv.find(x=>x.item===i); return s&&s.count>=(c||1); }
+function countOf(i){ let s=inv.find(x=>x.item===i); return s?s.count:0; }
+
+// ================= INPUT (keys) =================
+addEventListener('keydown',e=>{ const k=e.key.toLowerCase(); keys[k]=true;
+  if(!started)return;
+  if(e.key==='Escape'){ setPaused(!paused); return; }  // Esc pauses / resumes
+  if(paused){ if(k===' ')e.preventDefault(); return; }
+  if(e.key==='7'&&carriedKid){ dropKidHere(); return; }   // 7 = drop the kid (make a camp)
+  if(e.key>='1'&&e.key<='8'){let i=+e.key-1; if(i<inv.length){sel=i;renderHotbar();}}
+  if(k==='c')toggleCraft();
+  if(k==='f')toggleFlashlight();
+  if(k==='m')showMap=!showMap;
+  if(k==='v'){ thirdPerson=!thirdPerson; msg(thirdPerson?'📷 Third-person view':'📷 First-person view'); }
+  if(k==='b'){ designOpen?closeDesign():openDesign(); }
+  if(k==='n'){ toggleSound(); }
+  if(k==='e')interact();
+  if(k==='r')freeKid();   // R = rescue the nearest kid
+  if(k==='g')carryKid();  // G = pick up / set down a rescued kid
+  if(k===' '){ e.preventDefault(); useTool(); }   // Space = hit / use tool
+  if(e.key==='ArrowUp') jump();                    // Arrow Up = jump
+});
+addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
+addEventListener('wheel',e=>{ if(!started||paused||gameOver||inv.length<2)return; e.preventDefault();
+  sel=(sel + (e.deltaY>0?1:-1) + inv.length)%inv.length; renderHotbar(); },{passive:false});   // scroll to switch tools
+function jump(){ if(player.jy<=0.001){ player.vy=4.6; sfx.jump(); } }
+function setPaused(p){ paused=p;
+  document.getElementById('pause').style.display=p?'flex':'none';
+  if(p){ if(document.exitPointerLock)document.exitPointerLock(); }
+  else { if(!gameOver) reqLock(); }
+}
+function toggleFlashlight(){ if(!has('flashlight')){msg('Craft a Flashlight first.');return;}
+  flashlight=!flashlight; sfx.click(); spot.visible=flashlight; spot.intensity=flashlight?2.2:0;
+  const el=document.getElementById('light'); el.textContent='🔦 Flashlight: '+(flashlight?'ON':'off'); el.style.color=flashlight?'#ffd257':'#888';
+}
+function toggleCraft(){ craftOpen=!craftOpen; document.getElementById('craft').style.display=craftOpen?'block':'none'; renderCraft(); }
+
+// ================= RAYCAST TARGET =================
+const CENTER=new THREE.Vector2(0,0);
+function castTarget(){
+  raycaster.setFromCamera(CENTER,camera);
+  const objs=[groundMesh];
+  for(const k in blockMap) objs.push(blockMap[k].root);
+  for(const m of mobs) if(m.mesh) objs.push(m.mesh);
+  const hits=raycaster.intersectObjects(objs,true);
+  if(!hits.length)return null;
+  const h=hits[0]; let o=h.object; while(o&&!(o.userData&&o.userData.kind)) o=o.parent;
+  if(!o)return null;
+  return {kind:o.userData.kind, data:o.userData, point:h.point, dist:h.distance};
+}
+
+// ================= USE TOOL =================
+function useTool(){
+  if(gameOver||paused)return;
+  const cur=inv[sel];
+  if(cur&&cur.item==='bandage'){
+    if(player.hp>=player.maxhp){msg('Health already full.');return;}
+    player.hp=Math.min(player.maxhp,player.hp+35); removeItem('bandage',1); sfx.pickup(); msg('🩹 +35 health'); return;
+  }
+  // wood -> fire (proximity)
+  if(cur&&cur.item==='wood'){
+    let f=nearestStruct('fire',1.8);
+    if(f){ if(fire>=100){msg('🔥 Fire already at 100!');return;} removeItem('wood',1); fire=Math.min(100,fire+5); updateFire(); burst(f.x,0.8,f.z,0xff9020,10); sfx.fire(); msg('🪵➜🔥 Wood on the fire! ('+fire+'/100)'); checkWin(); return; }
+  }
+  const t=castTarget();
+  // place wall on looked-at ground
+  if(cur&&cur.item==='wall'){
+    if(t&&t.kind==='ground'&&t.dist<=REACH){
+      let tx=Math.floor(t.point.x), tz=Math.floor(t.point.z);
+      if(inMap(tx,tz)&&PLACEABLE[map[tz][tx]]&&!blockMap[tx+','+tz]){
+        let pself=(Math.floor(player.x)===tx&&Math.floor(player.z)===tz);
+        let onstr=structures.some(s=>Math.floor(s.x)===tx&&Math.floor(s.z)===tz);
+        if(pself||onstr){msg("Can't build there.");return;}
+        map[tz][tx]=WALL; addBlock(tx,tz,WALL); removeItem('wall',1); sfx.thud(); msg('🧱 Wall placed'); return;
+      }
+    }
+    msg('Look at open ground to place a wall.'); return;
+  }
+  if(!t||t.dist>REACH){ if(t&&t.kind==='mob'){} else {return;} }
+  // block mining/chopping
+  if(t&&t.kind==='block'&&t.dist<=REACH){
+    const {tx,tz,type}=t.data;
+    if(type===TREE){ if(cur&&(cur.item==='axe'||cur.item==='hammer')){ map[tz][tx]=GRASS; removeBlock(tx,tz); addItem('wood',2); burst(tx+0.5,1.5,tz+0.5,0x6a4a2a,8); sfx.chop(); msg('🪵 +2 wood'); } else msg('Need an 🪓 Axe (or 🔨 Hammer) to chop trees.'); return; }
+    if(type===ORE){ if(cur&&(cur.item==='pickaxe'||cur.item==='hammer')){ map[tz][tx]=GRASS; removeBlock(tx,tz); addItem('iron_ore',1); addItem('stone',1); burst(tx+0.5,0.6,tz+0.5,0xccaa77,8); sfx.mine(); msg('⛏️ +1 iron ore'); } else msg('Need a ⚒️ Pickaxe (or 🔨 Hammer) to mine ore.'); return; }
+    if(type===STONE){ if(cur&&(cur.item==='pickaxe'||cur.item==='hammer')){ map[tz][tx]=GRASS; removeBlock(tx,tz); addItem('stone',2); burst(tx+0.5,0.6,tz+0.5,0xaaaaaa,6); sfx.mine(); msg('🪨 +2 stone'); } else msg('Need a ⚒️ Pickaxe or 🔨 Hammer for stone.'); return; }
+    if(type===WALL){ if(cur&&(cur.item==='pickaxe'||cur.item==='hammer')){ map[tz][tx]=GRASS; removeBlock(tx,tz); addItem('wall',1); burst(tx+0.5,1,tz+0.5,0xb5842e,6); sfx.thud(); msg('🧱 Wall removed'); } else msg('Need a Pickaxe/Hammer to break a wall.'); return; }
+  }
+  // attack mob
+  if(attackCd>0)return; attackCd=0.32;
+  const isHammer=cur&&cur.item==='hammer';
+  let dmg=isHammer?34:(cur&&cur.item==='sword')?18:6;
+  if(t&&t.kind==='mob'&&t.dist<=REACH+ (isHammer?1.2:0.4)){
+    const m=t.data.ref; if(!m.tamed){
+      m.hp-=dmg; m.hitCd=0.15; sfx.hit(); burst(m.x,1,m.z,0xff5050,isHammer?10:6);
+      let dx=m.x-player.x,dz=m.z-player.z,d=Math.hypot(dx,dz)||1, kn=isHammer?1.6:0.4;
+      moveEntity(m,(dx/d)*kn,(dz/d)*kn);
+    }
+  }
+}
+function nearestStruct(type,rad){ for(const s of structures){ if(s.type===type&&Math.hypot(s.x-player.x,s.z-player.z)<rad) return s; } return null; }
+
+// ================= INTERACT =================
+function freeKid(){
+  if(gameOver||paused)return false;
+  for(const k of kids){ if(k.freed)continue; let d=Math.hypot(k.x-player.x,k.z-player.z);
+    if(d<2.4){ let guarded=mobs.some(m=>m.guardOf===k&&!m.tamed);
+      if(guarded){msg('Defeat the guards before freeing the kid!');return true;}
+      k.freed=true; rescued++; if(k.bars){k.mesh.remove(k.bars);} if(k.kidMesh)k.kidMesh.material.color.set(0x88ff88);
+      sfx.rescue(); burst(k.x,1,k.z,0xffd257,16); msg('🧒 Kid rescued! ('+rescued+'/4)');
+      document.getElementById('rescued').textContent='🧒 Kids rescued: '+rescued+' / 4';
+      if(rescued>=4){ sfx.win(); msg('🎉 All 4 kids saved! Now survive to Day 200!'); }
+      checkWin(); return true; } }
+  return false;
+}
+function dropKidHere(){
+  if(gameOver||paused||!carriedKid)return;
+  const k=carriedKid;
+  k.x=player.x; k.z=player.z; if(k.mesh) k.mesh.position.set(player.x,0,player.z);
+  makeCamp(player.x, player.z);   // little tent + campfire
+  k.camping=true; carriedKid=null;
+  msg('⛺ You dropped the kid at a little camp.');
+}
+function makeCamp(x,z){
+  const g=new THREE.Group(); g.position.set(x,0,z);
+  const tent=new THREE.Mesh(new THREE.ConeGeometry(0.95,1.15,4),new THREE.MeshLambertMaterial({color:0xcc5533})); tent.position.set(0.8,0.57,0); tent.rotation.y=Math.PI/4; g.add(tent);
+  const door=new THREE.Mesh(new THREE.ConeGeometry(0.32,0.75,4),new THREE.MeshLambertMaterial({color:0x4a1e12})); door.position.set(0.8,0.37,0.6); door.rotation.y=Math.PI/4; g.add(door);
+  const logs=new THREE.Mesh(new THREE.BoxGeometry(0.45,0.12,0.45),MAT.bark); logs.position.set(-0.7,0.06,0); g.add(logs);
+  const fl=new THREE.Mesh(new THREE.ConeGeometry(0.18,0.55,7),new THREE.MeshBasicMaterial({color:0xff9020})); fl.position.set(-0.7,0.4,0); g.add(fl);
+  const light=new THREE.PointLight(0xff8030,0.9,7); light.position.set(-0.7,0.7,0); g.add(light);
+  scene.add(g);
+}
+function carryKid(){
+  if(gameOver||paused)return;
+  if(carriedKid){ dropKidHere(); return; }  // set the kid down at a camp
+  // pick up the nearest rescued kid
+  let best=null,bd=2.6;
+  for(const k of kids){ if(!k.freed)continue; let d=Math.hypot(k.x-player.x,k.z-player.z); if(d<bd){bd=d;best=k;} }
+  if(best){ carriedKid=best; burst(best.x,1.2,best.z,0xffd257,8); msg('🧒 You picked up the kid! Press G to set down.'); }
+  else msg('Rescue a kid first (press R), then carry it (G).');
+}
+function interact(){
+  if(gameOver||paused)return;
+  // adopt the white owl
+  if(owl&&!owl.adopted&&Math.hypot(owl.x-player.x,owl.z-player.z)<3.5){ owl.adopted=true; sfx.rescue(); msg('🦉 The white owl is now your pet! It flies with you.'); return; }
+  // feed/tame deer
+  for(const m of mobs){ if(m.type==='deer'&&!m.tamed){ let d=Math.hypot(m.x-player.x,m.z-player.z);
+    if(d<1.8){ if(has('meat')){ removeItem('meat',1); m.tamed=true; m.maxhp=80; m.hp=80; m.scared=0; m.big=true;
+      if(m.mesh) m.mesh.scale.set(1.8,1.8,1.8); if(m.body)m.body.material.color.set(0x88dd88);
+      sfx.rescue(); burst(m.x,1.5,m.z,0x88ff88,14); msg('🦌 BIG deer tamed! It follows you everywhere (even into the base).'); } else msg('Feed the deer 🍖 meat (need meat, press E).'); return; } } }
+  // free kid (also bound to the R key)
+  if(freeKid())return;
+  // machine / fire by proximity
+  let mc=nearestStruct('machine',2); if(mc){ if(has('iron_ore')){ removeItem('iron_ore',1); addItem('iron',1); burst(mc.x,1,mc.z,0xffcc00,8); sfx.smelt(); msg('🔩 Smelted ore → iron!'); } else msg('Need ⛏️ iron ore to smelt.'); return; }
+  let fr=nearestStruct('fire',2); if(fr){ if(has('wood')){ removeItem('wood',1); fire=Math.min(100,fire+5); updateFire(); burst(fr.x,0.8,fr.z,0xff9020,8); sfx.fire(); msg('🔥 +5 fire ('+fire+'/100)'); checkWin(); } else msg('Need 🪵 wood to feed the fire.'); return; }
+}
+
+// ================= MOVEMENT / PHYSICS =================
+function solidTile(tx,tz){ if(!inMap(tx,tz))return true; return !!SOLID[map[tz][tx]]; }
+function playerInBase(){ return player && Math.hypot(player.x-BASE.x,player.z-BASE.z)<BASE.r; }
+function collide(x,z){
+  for(const ox of [-PR,PR])for(const oz of [-PR,PR]){ if(solidTile(Math.floor(x+ox),Math.floor(z+oz))) return true; }
+  return false;
+}
+function moveEntity(e,dx,dz){
+  if(!collide(e.x+dx,e.z)) e.x=Math.max(0.4,Math.min(MAPW-0.4,e.x+dx));
+  if(!collide(e.x,e.z+dz)) e.z=Math.max(0.4,Math.min(MAPH-0.4,e.z+dz));
+}
+
+// ================= UPDATE =================
+function update(dt){
+  dt=Math.min(dt,0.05);
+  // movement
+  const fwd=new THREE.Vector3(); camera.getWorldDirection(fwd); fwd.y=0; fwd.normalize();
+  const right=new THREE.Vector3().crossVectors(fwd,new THREE.Vector3(0,1,0)).normalize();
+  let mx=0,mz=0;
+  if(keys['w']){mx+=fwd.x;mz+=fwd.z;}
+  if(keys['s']){mx-=fwd.x;mz-=fwd.z;}
+  if(keys['d']){mx+=right.x;mz+=right.z;}
+  if(keys['a']){mx-=right.x;mz-=right.z;}
+  if(keys['arrowleft']) player.yaw+=1.9*dt;    // turn left/right with arrows (no mouse needed)
+  if(keys['arrowright']) player.yaw-=1.9*dt;
+  if(touchMoveVec.x||touchMoveVec.y){          // on-screen joystick
+    mx += fwd.x*(-touchMoveVec.y) + right.x*touchMoveVec.x;
+    mz += fwd.z*(-touchMoveVec.y) + right.z*touchMoveVec.x;
+  }
+  let l=Math.hypot(mx,mz); if(l>0){ mx/=l; mz/=l; moveEntity(player,mx*player.speed*dt,mz*player.speed*dt); }
+  if(l>0 && player.jy<=0.02){ stepT-=dt; if(stepT<=0){ sfx.step(); stepT=0.34; } } else stepT=0;   // footsteps
+  updateChunks();   // stream blocks in/out around the player
+  updateBots(dt); updateOwl(dt);
+  kidWarnT-=dt; if(kidWarnT<=0){ let nd=1e9; for(const k of kids){ if(!k.freed){ let d=Math.hypot(k.x-player.x,k.z-player.z); if(d<nd)nd=d; } }
+    if(nd<16){ if(!muted)sfx.nearKid(); msg('🔔 A trapped child is near!'); kidWarnT=nd<7?1.3:2.6; } else kidWarnT=0.6; }
+  // jump / gravity
+  player.vy-=14*dt; player.jy+=player.vy*dt; if(player.jy<0){player.jy=0;player.vy=0;}
+  // day/night
+  time+=dt/DAYLEN; if(time>=1){time-=1;dayNum++; if(dayNum>=200) end(true,'You survived to Day 200! 🎉'); }
+  const dayLight=Math.max(0,Math.min(1,0.5-0.5*Math.cos(time*Math.PI*2)));
+  const night=dayLight<0.32;
+  applyLight(dayLight);
+  updateClock(night);
+  if(windGain) windGain.gain.value = muted?0:(0.015+dayLight*0.03);   // wind swells by day
+  ambT-=dt; if(ambT<=0){ ambT = night?(0.8+Math.random()*0.9):(3.5+Math.random()*3); if(!muted&&actx){ night?cricket():bird(); } }
+  { let ib=playerInBase(); if(ib&&!inBasePrev) msg('🏠 Safe base — enemies stay out here'); inBasePrev=ib; }
+  // spawn deer/rabbits
+  if(night&&Math.random()<0.5*dt&&mobs.filter(m=>m.type==='deer').length<6){ let p=edgeNear(); spawnMob('deer',p.x,p.z); }
+  if(!night&&Math.random()<0.25*dt&&mobs.filter(m=>m.type==='rabbit').length<10){ let p=findOpen(); spawnMob('rabbit',p.x+0.5,p.z+0.5); }
+  // chest pickup by proximity
+  for(const s of structures){ if(s.used)continue;
+    if((s.type==='chest'||s.type==='redchest'||s.type==='bluechest')&&Math.hypot(s.x-player.x,s.z-player.z)<1.2) openChest(s); }
+  // light house grants a flashlight
+  let lh=nearestStruct('lighthouse',2.4);
+  if(lh&&!has('flashlight')&&inv.length<bagSize){ addItem('flashlight',1); burst(lh.x,4.4,lh.z,0xffef99,14); msg('🔦 You found a flashlight in the light house!'); }
+  // prompt when standing next to a cage whose guards are cleared
+  for(const k of kids){ if(k.freed)continue; let d=Math.hypot(k.x-player.x,k.z-player.z);
+    if(d<3.5 && !mobs.some(m=>m.guardOf===k&&!m.tamed)){ if(!k._prompted){ k._prompted=true; msg('🔑 Press R to open the cage & free the kid!'); } }
+    else if(d>4.5) k._prompted=false; }
+  // mobs
+  for(const m of mobs){ const s=MOB_STATS[m.type];
+    if(m.hitCd>0)m.hitCd-=dt; if(m.scared>0)m.scared-=dt;
+    let dx=player.x-m.x, dz=player.z-m.z, dist=Math.hypot(dx,dz)||1;
+    if(m.tamed){ let en=nearestEnemy(m);
+      if(en){ let ex=en.x-m.x,ez=en.z-m.z,ed=Math.hypot(ex,ez)||1; moveEntity(m,(ex/ed)*s.spd*1.2*dt,(ez/ed)*s.spd*1.2*dt);
+        if(ed<1.2&&m.hitCd<=0){en.hp-=(m.big?14:8);en.hitCd=0.1;m.hitCd=0.4;burst(en.x,1,en.z,0xff5050,4);} }
+      else if(dist>2.2){ let sp=s.spd*(dist>7?2:1.2); moveEntity(m,(dx/dist)*sp*dt,(dz/dist)*sp*dt); }
+      if(dist>30){ m.x=player.x-2; m.z=player.z-2; }   // catch up if left far behind
+      syncMob(m,dx,dz); continue;
+    }
+    if(s.friendly){ if(dist<3.2) moveEntity(m,-(dx/dist)*s.spd*dt,-(dz/dist)*s.spd*dt); else wander(m,s,dt); syncMob(m); continue; }
+    if(m.type==='deer'){
+      // deer no longer chases — just wanders; only hits you if you're right beside it
+      if(flashlight&&dist<6&&inFront(m)) m.scared=0.7;
+      if(m.scared>0){ moveEntity(m,-(dx/dist)*s.spd*dt,-(dz/dist)*s.spd*dt); }
+      else wander(m,s,dt);
+      if(dist<1.3) hitPlayer(m.dmg,m);
+      syncMob(m,dx,dz); continue;
+    }
+    if(s.guard){ // guards stay by their cage and wander; only hit you when you step beside them
+      let h=m.guardOf, hx=h?h.x:m.x, hz=h?h.z:m.z;
+      let bx=hx-m.x,bz=hz-m.z,bd=Math.hypot(bx,bz)||1;
+      if(bd>2.5) moveEntity(m,(bx/bd)*s.spd*dt,(bz/bd)*s.spd*dt); else wander(m,s,dt);
+      if(dist<1.3) hitPlayer(m.dmg,m);
+      syncMob(m,dx,dz);
+    }
+  }
+  // keep hostile mobs out of the safe base
+  for(const m of mobs){ if(m.tamed||MOB_STATS[m.type].friendly)continue;
+    let bd=Math.hypot(m.x-BASE.x,m.z-BASE.z);
+    if(bd<BASE.r){ let u=BASE.r/(bd||0.001); m.x=BASE.x+(m.x-BASE.x)*u; m.z=BASE.z+(m.z-BASE.z)*u; if(m.mesh)m.mesh.position.set(m.x,m.jy||0,m.z); } }
+  // deaths
+  for(const m of mobs){ if(m.hp<=0&&!m.dead){ m.dead=true;
+    if(m.type==='rabbit'||m.type==='deer') dropMeat(m.x,m.z,m.type==='deer'?2:1);
+    if(m.type==='deer'){ player.hp=Math.min(player.maxhp,player.hp+10); msg('🦌 Deer down — meat dropped (+10 hp)'); }
+    burst(m.x,1,m.z,0x992222,12); scene.remove(m.mesh); } }
+  mobs=mobs.filter(m=>m.hp>0);
+  // drops pickup + bob
+  for(const d of drops){ d.mesh.rotation.y+=dt*2; d.mesh.position.y=0.6+Math.sin(time*40+d.x)*0.08;
+    if(Math.hypot(d.x-player.x,d.z-player.z)<0.9){ addItem('meat',d.count); d.got=true; sfx.pickup(); scene.remove(d.mesh); } }
+  drops=drops.filter(d=>!d.got);
+  // carried kid rides along on the player
+  if(carriedKid){ carriedKid.x=player.x; carriedKid.z=player.z;
+    if(carriedKid.mesh) carriedKid.mesh.position.set(player.x,1.3+Math.sin(time*80)*0.04,player.z); }
+  // fire visuals
+  for(const s of structures){ if(s.type==='fire'){ let lv=fire/100; if(s.flame){ s.flame.scale.set(0.6+lv*0.9,0.5+lv*1.6+Math.sin(time*300)*0.1,0.6+lv*0.9); s.flame.position.y=0.4+(0.5+lv*0.8); } if(s.light){ s.light.intensity=0.4+lv*1.6; } } }
+  // particles
+  for(const p of particles){ p.life-=dt; p.mesh.position.x+=p.vx*dt; p.mesh.position.y+=p.vy*dt; p.mesh.position.z+=p.vz*dt; p.vy-=6*dt; p.mesh.scale.multiplyScalar(0.96); if(p.life<=0)scene.remove(p.mesh); }
+  particles=particles.filter(p=>p.life>0);
+  // cooldowns
+  if(attackCd>0)attackCd-=dt;
+  if(hurtCd>0)hurtCd-=dt;
+  if(msgTimer>0){ msgTimer-=dt; if(msgTimer<=0)document.getElementById('msg').style.opacity=0; }
+  // camera — first- or third-person (V toggles)
+  if(designOpen) thirdPerson=true;
+  playerMesh.position.set(player.x, player.jy, player.z);
+  playerMesh.rotation.y=player.yaw + (designOpen?Math.PI:0);   // face the camera while designing
+  playerMesh.visible=thirdPerson;
+  if(thirdPerson){
+    const dist=4.2, h=2.3;
+    camera.position.set(player.x + Math.sin(player.yaw)*dist, EYE+player.jy+h, player.z + Math.cos(player.yaw)*dist);
+    camera.lookAt(player.x, 1.1+player.jy, player.z);
+  } else {
+    camera.position.set(player.x, EYE+player.jy, player.z);
+    camera.rotation.set(player.pitch, player.yaw, 0, 'YXZ');
+  }
+  updateHP();
+  if(player.hp<=0) end(false);
+}
+function syncMob(m,dx,dz){ m.mesh.position.set(m.x,m.jy||0,m.z); if(dx!==undefined&&(dx||dz)){ m.mesh.rotation.y=Math.atan2(dx,dz); }
+  // damage flash tint
+  if(m.body){ m.body.material.color.setHex(m.hitCd>0?0xffffff:(m.tamed?0x88dd88:MOB_STATS[m.type].color)); }
+}
+function nearestEnemy(from){ let best=null,bd=6; for(const m of mobs){ if(m===from||m.tamed||MOB_STATS[m.type].friendly)continue; let d=Math.hypot(m.x-from.x,m.z-from.z); if(d<bd){bd=d;best=m;} } return best; }
+function inFront(m){ const fwd=new THREE.Vector3(); camera.getWorldDirection(fwd); fwd.y=0; fwd.normalize(); let dx=m.x-player.x,dz=m.z-player.z,d=Math.hypot(dx,dz)||1; return (dx/d*fwd.x+dz/d*fwd.z)>0.4; }
+function wander(m,s,dt){ m.wt-=dt; if(m.wt<=0){ m.wx=Math.random()*2-1; m.wz=Math.random()*2-1; m.wt=0.8+Math.random()*1.2; } moveEntity(m,m.wx*s.spd*0.4*dt,m.wz*s.spd*0.4*dt); }
+function hitPlayer(dmg,m){ if(m.hitCd>0)return; if(playerInBase())return; m.hitCd=0.6; player.hp-=dmg; hurtCd=0.15; flashRed(); sfx.hurt();
+  let dx=player.x-m.x,dz=player.z-m.z,d=Math.hypot(dx,dz)||1; moveEntity(player,(dx/d)*0.5,(dz/d)*0.5); }
+function edgeNear(){ let x=player.x+(Math.random()*2-1)*16, z=player.z+(Math.random()*2-1)*16; return {x:Math.max(1,Math.min(MAPW-1,x)),z:Math.max(1,Math.min(MAPH-1,z))}; }
+
+// ================= CHESTS =================
+function openChest(s){ s.used=true;
+  if(s.type==='chest'){ bagSize+=2; let loot=['wood','stone','iron','bandage','meat'][(Math.random()*5)|0]; addItem(loot,loot==='iron'?2:1); msg('📦 New bag! +2 slots ('+ITEMS[loot].name+')'); if(s.body)s.body.material.color.multiplyScalar(0.5); }
+  else if(s.type==='redchest'){ bagSize+=3; let tools=['sword','pickaxe','flashlight'].filter(t=>!has(t)); let got=[]; if(tools.length){let t=tools[(Math.random()*tools.length)|0]; addItem(t,1); got.push(ITEMS[t].name);} else {addItem('iron',3);got.push('Iron x3');} addItem('bandage',2); got.push('Bandage x2'); addItem('wall',5); got.push('Wall x5'); msg('🎁 RED CHEST! +3 slots ('+got.join(', ')+')'); if(s.body)s.body.material.color.multiplyScalar(0.5); }
+  else if(s.type==='bluechest'){ bagSize+=2; if(!has('hammer'))addItem('hammer',1); else addItem('iron',3); addItem('bandage',1); msg('🔵 BLUE CHEST! +2 slots (🔨 Hammer, Bandage)'); if(s.body)s.body.material.color.multiplyScalar(0.5); }
+  sfx.chest(); burst(s.x,1,s.z,0xffd257,20); renderHotbar();
+  if(s.mesh){ scene.remove(s.mesh); s.mesh=null; }   // chest vanishes after opening
+}
+function dropMeat(x,z,count){ const m=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.3,0.3),new THREE.MeshLambertMaterial({color:0xcc5544})); m.position.set(x,0.6,z); scene.add(m); drops.push({x,z,count,mesh:m,got:false}); }
+
+// ================= PARTICLES / LIGHT =================
+function burst(x,y,z,color,n){ for(let i=0;i<n;i++){ const p=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.12,0.12),new THREE.MeshBasicMaterial({color})); p.position.set(x,y,z); scene.add(p); particles.push({mesh:p,vx:(Math.random()*2-1)*2,vy:Math.random()*2+1,vz:(Math.random()*2-1)*2,life:0.5}); } if(particles.length>240)particles.splice(0,particles.length-240); }
+function applyLight(d){
+  amb.intensity=0.18+d*0.55; hemi.intensity=0.2+d*0.6; sun.intensity=d*0.9;
+  const sky=new THREE.Color().setHSL(0.58,0.6,0.08+d*0.5);
+  scene.background=sky; scene.fog.color=sky;
+}
+function flashRed(){ const f=document.getElementById('flash'); f.style.opacity=0.5; setTimeout(()=>f.style.opacity=0,120); }
+
+// ================= UI =================
+function renderHotbar(){ const hb=document.getElementById('hotbar'); hb.innerHTML='';
+  for(let i=0;i<Math.max(bagSize,inv.length);i++){ let d=document.createElement('div'); d.className='slot'+(i===sel?' sel':''); let it=inv[i];
+    if(it) d.innerHTML=`<span>${ITEMS[it.item].icon}</span>`+(it.count>1?`<span class="cnt">${it.count}</span>`:'')+`<span class="nm">${ITEMS[it.item].name}</span>`;
+    else d.innerHTML=`<span style="color:#666;font-size:11px">${i+1}</span>`;
+    const selSlot=()=>{ if(i<inv.length){ sel=i; renderHotbar(); } };
+    d.onclick=selSlot;
+    d.addEventListener('touchstart',e=>{ e.preventDefault(); selSlot(); },{passive:false});  // reliable tap on iPad
+    hb.appendChild(d);
+  }
+}
+function renderCraft(){ const box=document.getElementById('recipes'); box.innerHTML='';
+  RECIPES.forEach(r=>{ let can=Object.entries(r.need).every(([k,v])=>countOf(k)>=v); let d=document.createElement('div'); d.className='recipe'+(can?' can':'');
+    let cost=Object.entries(r.need).map(([k,v])=>`${ITEMS[k].icon}${v}`).join(' ');
+    d.innerHTML=`<div class="r-name">${ITEMS[r.out].icon} ${ITEMS[r.out].name}${r.count?' x'+r.count:''}</div><div class="r-cost">${cost}</div>`;
+    d.onclick=()=>craft(r); box.appendChild(d);
+  });
+}
+function craft(r){ if(has(r.out)&&ITEMS[r.out].tool){msg('You already have a '+ITEMS[r.out].name+'.');return;}
+  if(!Object.entries(r.need).every(([k,v])=>countOf(k)>=v)){msg('Not enough materials.');return;}
+  if(inv.length>=bagSize&&!inv.find(s=>s.item===r.out)){msg('Bag full! Open a chest for more slots.');return;}
+  Object.entries(r.need).forEach(([k,v])=>removeItem(k,v)); let n=r.count||1; addItem(r.out,n); sfx.craft(); msg('⚒️ Crafted '+ITEMS[r.out].name+(n>1?' x'+n:'')+'!'); renderCraft(); renderHotbar();
+}
+function msg(t){ let e=document.getElementById('msg'); e.textContent=t; e.style.opacity=1; msgTimer=2.4; }
+function updateHP(){ let pct=Math.max(0,Math.min(100,player.hp/player.maxhp*100)); document.querySelector('#hpbar i').style.width=pct+'%'; let t=document.getElementById('hptxt'); if(t)t.textContent=Math.max(0,Math.ceil(player.hp))+'/'+player.maxhp; }
+function updateFire(){ document.querySelector('#firebar i').style.width=fire+'%'; document.getElementById('firetxt').textContent=fire; }
+function updateClock(night){ let hh=(time*24)|0; document.getElementById('clock').textContent=(night?'🌙 Night':'☀️ Day')+' '+dayNum+' / 200  ('+String(hh).padStart(2,'0')+':00)'; }
+
+// ================= MINIMAP =================
+const mc=document.getElementById('mini'), mg=mc?mc.getContext('2d'):null;
+function drawMini(){ const mini=document.getElementById('mini'); if(!mini||!mg)return;   // kiosk mode removes the minimap — no-op instead of crashing the render loop
+  mini.style.display=showMap?'block':'none'; const lbl=document.getElementById('minilbl'); if(lbl)lbl.style.display=showMap?'block':'none'; if(!showMap)return;
+  const S=168, ts=S/MAPW; mg.clearRect(0,0,S,S);
+  const terr = diff.revealAll?miniTerrainCanvas:revealCanvas;   // easy=full map, else fog-of-war
+  if(terr) mg.drawImage(terr,0,0,S,S);
+  // chests are intentionally NOT shown — you must explore to find them
+  for(const s of structures){ let c; if(s.type==='fire')c='#f90'; else if(s.type==='machine')c='#ccc'; else if(s.type==='lighthouse')c='#ffef99'; else continue; let sz=s.type==='lighthouse'?6:4; mg.fillStyle=c; mg.fillRect(s.x*ts-sz/2,s.z*ts-sz/2,sz,sz); }
+  // cages appear when their area has been explored (easy = always)
+  for(const k of kids){ if(!k.freed && !isExplored(k.x,k.z))continue; let cx=k.x*ts,cy=k.z*ts; if(k.freed){mg.fillStyle='#8f8';mg.font='9px monospace';mg.fillText('✔',cx-3,cy+3);} else { mg.fillStyle=k.def.color; mg.fillRect(cx-4,cy-4,8,8); mg.strokeStyle='#fff'; mg.lineWidth=1; mg.strokeRect(cx-4,cy-4,8,8); mg.fillStyle='#fff'; mg.font='bold 7px monospace'; mg.fillText(k.idx+1,cx-2,cy+3);} }
+  for(const m of mobs){ if(m.tamed){mg.fillStyle='#8f8';mg.fillRect(m.x*ts-1.5,m.z*ts-1.5,3,3);} }
+  // player + facing
+  const fwd=new THREE.Vector3(); camera.getWorldDirection(fwd);
+  let pxp=player.x*ts,pyp=player.z*ts; mg.fillStyle='#fff'; mg.fillRect(pxp-2.5,pyp-2.5,5,5);
+  mg.fillStyle='#39f'; mg.fillRect(pxp+fwd.x*5-1,pyp+fwd.z*5-1,2,2);
+}
+
+// ================= WIN / LOSE =================
+function checkWin(){ updateFire(); }   /* the game only ends at Day 200 — saving kids is a bonus, keep playing */
+function end(win, why){ if(gameOver)return; gameOver=true; sfx[win?'win':'lose'](); document.exitPointerLock&&document.exitPointerLock();
+  const ov=document.getElementById('overlay'); ov.style.display='flex';
+  ov.innerHTML = win
+    ? `<h1>🎉 YOU WON! 🎉</h1><p>${why||('You rescued all 4 children! Day reached: '+dayNum+'.')}</p><button id="rs">▶ Play Again</button>`
+    : `<h1 style="color:#e05">💀 YOU DIED 💀</h1><p>Kids rescued: ${rescued}/4 · Campfire: ${fire}/100.</p><p>Tip: craft a 🗡️ sword or grab the 🔨 hammer before bears & lions; keep 🩹 bandages; flashlight the deer at night.</p><button id="rs">▶ Try Again</button>`;
+  document.getElementById('rs').onclick=()=>location.reload();
+}
+
+// ================= LOOP =================
+function loop(){ requestAnimationFrame(loop); const dt=clock?clock.getDelta():0;
+  if(started&&!paused&&!gameOver) update(dt);
+  if(started){ drawMini(); if(renderer)renderer.render(scene,camera); }
+}
+
+// ================= START =================
+function start(){
+  document.getElementById('overlay').style.display='none';
+  if(!renderer) init3D();
+  // apply difficulty
+  const cfg=DIFF[difficulty]||DIFF.medium;
+  MAPW=MAPH=cfg.size; BASE.x=MAPW/2; BASE.z=MAPH/2; diff.hpM=cfg.hpM; diff.dmgM=cfg.dmgM; diff.revealAll=cfg.revealAll;
+  explored=new Uint8Array(MAPW*MAPH);
+  // fresh world
+  genWorld(); buildGround();
+  revealCanvas=document.createElement('canvas'); revealCanvas.width=MAPW; revealCanvas.height=MAPH;   // fog-of-war layer
+  blockMap={}; lastChunkTile=null;
+  player={x:MAPW/2,z:MAPH/2,yaw:0,pitch:0,hp:200,maxhp:200,speed:4.3,jy:0,vy:0};
+  inv=[]; bagSize=4; sel=0; addItem('axe',1); addItem('pickaxe',1); addItem('sword',1);
+  time=0.28; dayNum=1; fire=0; rescued=0; flashlight=false; gameOver=false; paused=false; carriedKid=null;
+  document.getElementById('pause').style.display='none';
+  structures=[]; mobs=[]; kids=[]; drops=[]; particles=[]; bots=[]; owl=null; kidWarnT=0;
+  placeStructures(); spawnKidsAndCages(); spawnWildlife();
+  if(gameMode==='robots') spawnBots(3);
+  spawnOwl();
+  reveal(player.x,player.z);
+  updateChunks(true);   // build the blocks around the spawn
+  renderHotbar(); renderCraft(); updateHP(); updateFire();
+  document.getElementById('rescued').textContent='🧒 Kids rescued: 0 / 4';
+  started=true;
+  audioInit(); audioResume(); startAmbient();
+  reqLock();
+}
+startBtn.onclick=start;
+document.querySelectorAll('#menu .mbtn').forEach(b=>b.addEventListener('click',()=>{
+  const grp=b.parentElement.querySelectorAll('.mbtn');
+  if(b.dataset.mode){ gameMode=b.dataset.mode; grp.forEach(x=>x.classList.remove('on')); b.classList.add('on'); }
+  if(b.dataset.diff){ difficulty=b.dataset.diff; grp.forEach(x=>x.classList.remove('on')); b.classList.add('on'); }
+}));
+loop();
+
+// ================= TOUCH CONTROLS =================
+if(TOUCH) document.body.classList.add('touch');
+(function setupTouch(){
+  const joy=document.getElementById('joy'), knob=document.getElementById('knob'), lookpad=document.getElementById('lookpad');
+  let joyId=null, joyCx=0, joyCy=0;
+  joy.addEventListener('touchstart',e=>{ e.preventDefault(); const t=e.changedTouches[0]; joyId=t.identifier; const r=joy.getBoundingClientRect(); joyCx=r.left+r.width/2; joyCy=r.top+r.height/2; },{passive:false});
+  joy.addEventListener('touchmove',e=>{ e.preventDefault(); for(const t of e.changedTouches){ if(t.identifier===joyId){ let dx=t.clientX-joyCx, dy=t.clientY-joyCy, m=Math.hypot(dx,dy)||1, cl=Math.min(m,45); dx=dx/m*cl; dy=dy/m*cl; touchMoveVec.x=dx/45; touchMoveVec.y=dy/45; knob.style.transform='translate('+dx+'px,'+dy+'px)'; } } },{passive:false});
+  function joyEnd(e){ for(const t of e.changedTouches){ if(t.identifier===joyId){ joyId=null; touchMoveVec.x=0; touchMoveVec.y=0; knob.style.transform='translate(0,0)'; } } }
+  joy.addEventListener('touchend',joyEnd); joy.addEventListener('touchcancel',joyEnd);
+
+  let lookId=null, lastX=0, lastY=0;
+  lookpad.addEventListener('touchstart',e=>{ e.preventDefault(); if(lookId!==null)return; const t=e.changedTouches[0]; lookId=t.identifier; lastX=t.clientX; lastY=t.clientY; },{passive:false});
+  lookpad.addEventListener('touchmove',e=>{ e.preventDefault(); if(!player)return; for(const t of e.changedTouches){ if(t.identifier===lookId){ player.yaw-=(t.clientX-lastX)*0.005; player.pitch=Math.max(-1.5,Math.min(1.5,player.pitch-(t.clientY-lastY)*0.005)); lastX=t.clientX; lastY=t.clientY; } } },{passive:false});
+  function lookEnd(e){ for(const t of e.changedTouches){ if(t.identifier===lookId) lookId=null; } }
+  lookpad.addEventListener('touchend',lookEnd); lookpad.addEventListener('touchcancel',lookEnd);
+
+  function doAct(a){ if(!started||gameOver)return;
+    switch(a){ case 'dig':useTool();break; case 'jump':jump();break; case 'interact':interact();break;
+      case 'mine':{ let ti=inv.findIndex(it=>it.item==='pickaxe'||it.item==='hammer');
+        if(ti<0){ msg('You need a ⚒️ Pickaxe to cut stone.'); break; }
+        sel=ti; renderHotbar(); useTool(); break; }
+      case 'rescue':freeKid();break; case 'carry':carryKid();break; case 'craft':toggleCraft();break;
+      case 'flash':toggleFlashlight();break; case 'view':thirdPerson=!thirdPerson;break;
+      case 'map':showMap=!showMap;break; case 'pause':setPaused(!paused);break;
+      case 'design':designOpen?closeDesign():openDesign();break;
+      case 'sound':toggleSound();break;
+      case 'restart':doRestart();break;
+      case 'prevtool': if(inv.length){ sel=(sel-1+inv.length)%inv.length; renderHotbar(); } break;
+      case 'nexttool': if(inv.length){ sel=(sel+1)%inv.length; renderHotbar(); } break; } }
+let restartArm=false;
+function doRestart(){ if(restartArm){ location.reload(); return; } restartArm=true; msg('🔄 Tap Restart again to confirm'); setTimeout(()=>{restartArm=false;},2500); }
+  document.querySelectorAll('#touch button').forEach(b=>{
+    b.addEventListener('touchstart',e=>{ e.preventDefault(); e.stopPropagation(); doAct(b.dataset.act); },{passive:false});
+  });
+})();
+
+// ================= CHARACTER DESIGNER =================
+(function setupDesign(){
+  const rows=document.getElementById('designRows');
+  [['shirt','Shirt'],['skin','Skin'],['hair','Hair'],['legs','Pants']].forEach(([key,label])=>{
+    const row=document.createElement('div'); row.className='drow';
+    row.innerHTML='<div class="lbl">'+label+'</div>';
+    const sws=document.createElement('div'); sws.className='sws';
+    PAL[key].forEach(col=>{
+      const b=document.createElement('div'); b.className='sw'+(look[key]===col?' on':'');
+      b.style.background='#'+col.toString(16).padStart(6,'0');
+      const pick=()=>{ look[key]=col; saveLook(); applyLook(); sws.querySelectorAll('.sw').forEach(s=>s.classList.remove('on')); b.classList.add('on'); };
+      b.addEventListener('click',pick);
+      b.addEventListener('touchstart',e=>{ e.preventDefault(); pick(); },{passive:false});
+      sws.appendChild(b);
+    });
+    row.appendChild(sws); rows.appendChild(row);
+  });
+  function addChoiceRow(label,key,opts){
+    const row=document.createElement('div'); row.className='drow'; row.innerHTML='<div class="lbl">'+label+'</div>';
+    const box=document.createElement('div'); box.className='sws';
+    opts.forEach(o=>{ const b=document.createElement('div'); b.className='opt'+((!!look[key])===o.val?' on':''); b.textContent=o.label;
+      const pick=()=>{ look[key]=o.val; saveLook(); rebuildPlayer(); box.querySelectorAll('.opt').forEach(x=>x.classList.remove('on')); b.classList.add('on'); };
+      b.addEventListener('click',pick); b.addEventListener('touchstart',e=>{ e.preventDefault(); pick(); },{passive:false}); box.appendChild(b); });
+    row.appendChild(box); rows.appendChild(row);
+  }
+  addChoiceRow('Body','girl',[{label:'Boy',val:false},{label:'Girl 👧',val:true}]);
+  addChoiceRow('Hair length','longHair',[{label:'Short',val:false},{label:'Long',val:true}]);
+  document.getElementById('designDone').addEventListener('click',closeDesign);
+})();
+function openDesign(){ if(!started)return; designOpen=true; document.getElementById('design').style.display='block'; }
+function closeDesign(){ designOpen=false; document.getElementById('design').style.display='none'; }
+
+// ================= PWA SERVICE WORKER =================
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }
+window.__game={ tick:(n,dt)=>{for(let i=0;i<(n||1);i++)update(dt||0.03);}, spawnMob, get renderer(){return renderer;}, get scene(){return scene;}, get camera(){return camera;}, get state(){return {started,gameOver,mobs:mobs.length,kids:kids.length,structures:structures.map(s=>s.type),inv:inv.map(i=>i.item+':'+i.count),bagSize,fire,rescued,hp:player&&player.hp,blocks:Object.keys(blockMap).length};},
+  addItem, has, countOf, craft, RECIPES, get fire(){return fire;}, set fire(v){fire=v;}, get player(){return player;}, mobsRef:()=>mobs, structsRef:()=>structures, kidsRef:()=>kids, openChest, checkWin };
+});
+</script>
+</body>
+</html>

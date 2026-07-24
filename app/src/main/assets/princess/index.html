@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Peach's Great Escape</title>
+  <meta name="description" content="A 3D/2D adventure: escape the giant scary monster and call for help!">
+  <meta name="theme-color" content="#ff7bac">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./js/vendor/three.module.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <!-- Title screen -->
+  <div id="title-screen" class="screen">
+    <div class="title-box">
+      <h1>Peach's<br>Great Escape</h1>
+      <p class="subtitle">Phase 1 &mdash; The Park Attack</p>
+      <button id="start-btn" class="big-btn">▶ START</button>
+      <p class="hint">Keyboard: ← → move &nbsp;·&nbsp; Space jump<br>Touch: on-screen buttons</p>
+    </div>
+  </div>
+
+  <!-- 3D intro cutscene -->
+  <div id="intro-screen" class="screen hidden">
+    <canvas id="intro-canvas"></canvas>
+    <div id="caption"></div>
+    <button id="skip-btn">SKIP ▶▶</button>
+  </div>
+
+  <!-- 2D platformer -->
+  <div id="game-screen" class="screen hidden">
+    <canvas id="game-canvas"></canvas>
+    <div id="hud">
+      <span id="hud-warning"></span>
+    </div>
+    <div id="touch-controls">
+      <div class="tc-left">
+        <button class="tc-btn" id="tc-left">◀</button>
+        <button class="tc-btn" id="tc-right">▶</button>
+      </div>
+      <div class="tc-right">
+        <button class="tc-btn" id="tc-jump">⬆</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- The End screen -->
+  <div id="end-screen" class="screen hidden">
+    <div class="title-box">
+      <h1>⭐ THE END! ⭐</h1>
+      <p class="subtitle">Mario saved Peach and Toad!<br><br>🎮 A game made by <strong>Almaha</strong> 🎮</p>
+      <button id="replay-btn" class="big-btn">↻ PLAY AGAIN</button>
+    </div>
+  </div>
+
+  <div id="fader"></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

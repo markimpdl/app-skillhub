@@ -1,0 +1,1314 @@
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Mubarak's World — Desert Journey</title>
+
+<!-- PWA / installable app -->
+<link rel="manifest" href="./manifest.webmanifest" />
+<meta name="theme-color" content="#e3b878" />
+<meta name="description" content="A 3D desert adventure — a boy and his camel explore, gather, hunt and grow in Mubarak's World." />
+<link rel="icon" href="./icons/icon-192.png" />
+<!-- iOS / iPadOS installable -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Mubarak's World" />
+<link rel="apple-touch-icon" href="./icons/icon-192.png" />
+<link rel="apple-touch-icon" sizes="512x512" href="./icons/icon-512.png" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #1a1108; font-family: "Segoe UI", system-ui, sans-serif; }
+  #game { position: fixed; inset: 0; }
+  canvas { display: block; }
+
+  /* HUD */
+  #hud { position: fixed; inset: 0; pointer-events: none; color: #fff; user-select: none; }
+  .panel {
+    position: absolute; background: rgba(20,14,6,0.55); backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,220,150,0.25); border-radius: 12px; padding: 10px 14px;
+  }
+  #stats { top: 14px; left: 14px; min-width: 240px; }
+  .row { display: flex; align-items: center; gap: 8px; margin: 5px 0; font-size: 13px; }
+  .row .label { width: 58px; color: #ffd9a0; font-weight: 600; }
+  .bar { flex: 1; height: 12px; background: rgba(0,0,0,0.35); border-radius: 8px; overflow: hidden; }
+  .fill { height: 100%; width: 0%; border-radius: 8px; transition: width .25s ease; }
+  .fill.xp { background: linear-gradient(90deg,#ffcf5c,#ff9d2e); }
+  .fill.hp { background: linear-gradient(90deg,#ff6b6b,#c0392b); }
+  .fill.food { background: linear-gradient(90deg,#8fd14f,#4e9a2f); }
+  .fill.water { background: linear-gradient(90deg,#5cc8ff,#2e7dff); }
+  .val { width: 38px; text-align: right; font-variant-numeric: tabular-nums; font-size: 12px; opacity: .9; }
+
+  #camelPanel { top: 14px; right: 14px; min-width: 200px; }
+  #camelPanel h3 { font-size: 13px; color: #ffd9a0; margin-bottom: 6px; }
+
+  #inv { position: absolute; bottom: 14px; left: 14px; display: flex; gap: 10px; }
+  .chip { background: rgba(20,14,6,0.55); border: 1px solid rgba(255,220,150,0.25);
+    border-radius: 10px; padding: 8px 12px; font-size: 14px; display: flex; gap: 6px; align-items: center; }
+  .chip b { color: #ffd9a0; }
+
+  #prompt { position: absolute; bottom: 90px; left: 50%; transform: translateX(-50%);
+    background: rgba(20,14,6,0.7); border: 1px solid rgba(255,220,150,0.35); border-radius: 10px;
+    padding: 8px 16px; font-size: 15px; opacity: 0; transition: opacity .15s; text-align: center; }
+  #prompt.show { opacity: 1; }
+  #prompt kbd { background:#ffd9a0; color:#3a2708; border-radius:5px; padding:1px 7px; font-weight:700; margin:0 2px; }
+
+  #toast { position: absolute; top: 90px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; gap: 6px; align-items: center; }
+  .msg { background: rgba(20,14,6,0.72); border: 1px solid rgba(255,220,150,0.3);
+    border-radius: 8px; padding: 6px 14px; font-size: 14px; animation: pop 3.2s forwards; }
+  @keyframes pop { 0%{opacity:0;transform:translateY(-8px)} 10%{opacity:1;transform:none} 80%{opacity:1} 100%{opacity:0;transform:translateY(-6px)} }
+
+  #help { bottom: 14px; right: 14px; font-size: 12px; line-height: 1.7; max-width: 230px; }
+  #help kbd { background: rgba(255,217,160,0.9); color:#3a2708; border-radius:4px; padding:0 6px; font-weight:700; font-size:11px; }
+  #clock { top: 14px; left: 50%; transform: translateX(-50%); padding: 6px 14px; font-size: 13px; }
+  #lockHint { bottom: 60px; left: 50%; transform: translateX(-50%); font-size: 13px; opacity: 0; transition: opacity .2s; }
+  #lockHint.show { opacity: 1; }
+  #lockHint kbd { background: rgba(255,217,160,0.9); color:#3a2708; border-radius:4px; padding:0 6px; font-weight:700; font-size:11px; }
+
+  /* click-to-act menu */
+  #ctxMenu { position: fixed; z-index: 30; display: none; flex-direction: column; min-width: 150px;
+    background: rgba(20,14,6,0.94); backdrop-filter: blur(6px); border: 1px solid rgba(255,220,150,0.4);
+    border-radius: 10px; overflow: hidden; box-shadow: 0 10px 34px rgba(0,0,0,0.55); }
+  #ctxMenu.show { display: flex; }
+  #ctxMenu .mi { pointer-events: auto; background: none; border: none; color: #f2e2c4; text-align: left;
+    padding: 9px 15px; font-size: 14px; cursor: pointer; font-family: inherit; white-space: nowrap; }
+  #ctxMenu .mi:hover { background: rgba(255,207,92,0.22); }
+  #ctxMenu .mi.title { color: #ffcf5c; font-weight: 700; font-size: 12px; cursor: default;
+    padding: 8px 15px 5px; border-bottom: 1px solid rgba(255,220,150,0.18); }
+  #ctxMenu .mi.title:hover { background: none; }
+
+  /* Start / overlay screen */
+  #overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 50% 30%, #3a2a12, #160e04); z-index: 10; text-align: center; color: #fff; }
+  #overlay .card { max-width: 560px; padding: 30px 40px; }
+  #overlay h1 { font-size: 42px; color: #ffcf5c; letter-spacing: 1px; text-shadow: 0 2px 20px rgba(255,180,60,.4); }
+  #overlay p { margin: 14px 0; line-height: 1.6; color: #e8dcc4; font-size: 15px; }
+  #overlay .keys { display:grid; grid-template-columns: auto 1fr; gap:6px 14px; text-align:left;
+    margin: 18px auto; max-width: 360px; font-size: 14px; color:#e8dcc4; }
+  #overlay kbd { background:#ffd9a0; color:#3a2708; border-radius:5px; padding:1px 8px; font-weight:700; }
+  #startBtn { pointer-events: auto; margin-top: 14px; background: linear-gradient(90deg,#ffcf5c,#ff9d2e);
+    border: none; color:#3a2708; font-weight:800; font-size: 18px; padding: 12px 34px; border-radius: 12px;
+    cursor: pointer; box-shadow: 0 6px 24px rgba(255,160,40,.35); transition: transform .1s; }
+  #startBtn:hover { transform: translateY(-2px); }
+  #loading { color:#ffcf5c; font-size:18px; }
+</style>
+
+<div id="game"></div>
+
+<div id="hud" style="display:none">
+  <div id="stats" class="panel">
+    <div class="row"><span class="label">Boy Lv <b id="boyLv">1</b></span></div>
+    <div class="row"><span class="label">XP</span><div class="bar"><div id="boyXp" class="fill xp"></div></div><span class="val" id="boyXpV">0</span></div>
+    <div class="row"><span class="label">Health</span><div class="bar"><div id="hp" class="fill hp"></div></div><span class="val" id="hpV">100</span></div>
+    <div class="row"><span class="label">Food</span><div class="bar"><div id="food" class="fill food"></div></div><span class="val" id="foodV">100</span></div>
+    <div class="row"><span class="label">Water</span><div class="bar"><div id="water" class="fill water"></div></div><span class="val" id="waterV">100</span></div>
+  </div>
+
+  <div id="camelPanel" class="panel">
+    <h3>🐫 Camel — <span id="camelStage">Baby</span> (Lv <b id="camelLv">1</b>)</h3>
+    <div class="row"><span class="label">XP</span><div class="bar"><div id="camelXp" class="fill xp"></div></div><span class="val" id="camelXpV">0</span></div>
+    <div class="row" id="falconRow" style="display:none"><span class="label">🦅</span><span style="font-size:12px;opacity:.9">Falcon companion active</span></div>
+  </div>
+
+  <div id="clock" class="panel">☀️ <span id="timeLabel">Morning</span></div>
+
+  <div id="inv">
+    <div class="chip">🌿 <b id="cntPlant">0</b></div>
+    <div class="chip">🍎 <b id="cntFruit">0</b></div>
+    <div class="chip">💧 <b id="cntWater">0</b></div>
+    <div class="chip">🍖 <b id="cntMeat">0</b></div>
+  </div>
+
+  <div id="help" class="panel">
+    <div><kbd>W A S D</kbd> Move</div>
+    <div><kbd>Click</kbd> Walk to spot</div>
+    <div><kbd>Mouse drag</kbd> Look</div>
+    <div><kbd>Shift</kbd> Run</div>
+    <div><kbd>E</kbd> Collect / Tame</div>
+    <div><kbd>F</kbd> Hunt animal</div>
+    <div><kbd>R</kbd> Ride / dismount camel</div>
+    <div><kbd>Space</kbd> Eat / Drink</div>
+  </div>
+
+  <div id="prompt"></div>
+  <div id="toast"></div>
+  <div id="lockHint" class="panel show">🖱️ Click the sand to walk there · click an animal/plant for actions · drag to look</div>
+</div>
+
+<div id="ctxMenu"></div>
+
+<div id="overlay">
+  <div class="card">
+    <h1>Desert Journey</h1>
+    <p>A small boy and his baby camel wander the dunes. Gather <b>plants</b>, <b>fruits</b> and <b>water</b>, hunt small animals, and tame a wild <b>falcon</b>. As you both grow, the camel becomes strong enough to <b>ride</b> — and the desert opens up.</p>
+    <div class="keys">
+      <kbd>W A S D</kbd><span>Move around</span>
+      <kbd>Click</kbd><span>Walk to a spot on the sand</span>
+      <kbd>Mouse drag</kbd><span>Rotate the camera</span>
+      <kbd>E</kbd><span>Collect nearby / tame falcon</span>
+      <kbd>F</kbd><span>Hunt a nearby animal</span>
+      <kbd>R</kbd><span>Ride the camel (once grown)</span>
+      <kbd>Space</kbd><span>Eat food / drink water</span>
+    </div>
+    <button id="startBtn">Begin the Journey</button>
+    <p id="loading" style="display:none">Loading the desert…</p>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from './vendor/three.module.js'; // relative path: importmap support varies across WebView versions
+
+/* ------------------------------------------------------------------ *
+ *  Desert Journey — Boy & Camel                                       *
+ *  A single-file low-poly 3D adventure built with Three.js            *
+ * ------------------------------------------------------------------ */
+
+let renderer, scene, camera, clock;
+const WORLD = 220;            // half-size of the sand field
+const state = {
+  running: false,
+  time: 0.4,                  // day cycle 0..1 (start near midday for a bright, welcoming scene)
+  boy:   { lvl:1, xp:0, xpNext:100, hp:100, food:100, water:100 },
+  camel: { lvl:1, xp:0, xpNext:120 },
+  inv:   { plant:0, fruit:0, water:0, meat:0 },
+  falcon:false,
+  riding:false,
+};
+
+const keys = {};
+addEventListener('keydown', e => { keys[e.code] = true; });
+addEventListener('keyup',   e => { keys[e.code] = false; });
+
+/* ----------------------------- helpers ---------------------------- */
+const rand = (a,b) => a + Math.random()*(b-a);
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+function toast(msg){
+  const el = document.createElement('div');
+  el.className = 'msg'; el.textContent = msg;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(()=>el.remove(), 3200);
+}
+
+/* ============================ WORLD ============================== */
+function makeGround(){
+  const geo = new THREE.PlaneGeometry(WORLD*2, WORLD*2, 120, 120);
+  geo.rotateX(-Math.PI/2);
+  // gentle rolling dunes
+  const pos = geo.attributes.position;
+  for(let i=0;i<pos.count;i++){
+    const x = pos.getX(i), z = pos.getZ(i);
+    const h = Math.sin(x*0.03)*Math.cos(z*0.025)*3
+            + Math.sin(x*0.011+z*0.013)*5;
+    pos.setY(i, h);
+  }
+  geo.computeVertexNormals();
+  const mat = new THREE.MeshStandardMaterial({ color:0xe3b878, roughness:1, metalness:0, flatShading:true });
+  const m = new THREE.Mesh(geo, mat);
+  m.receiveShadow = true;
+  return m;
+}
+// approximate ground height so entities sit on the sand
+function groundY(x,z){
+  return Math.sin(x*0.03)*Math.cos(z*0.025)*3 + Math.sin(x*0.011+z*0.013)*5;
+}
+
+/* ---------- scenery builders (low-poly grouped meshes) ---------- */
+function cactus(){
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color:0x4b7d3a, roughness:.9, flatShading:true });
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.7,0.9,5,7), mat);
+  trunk.position.y = 2.5; trunk.castShadow = true; g.add(trunk);
+  for(let s=-1;s<=1;s+=2){
+    if(Math.random()<0.6){
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.5,2.2,6), mat);
+      arm.position.set(0.9*s, rand(2,3.2), 0); arm.rotation.z = -s*0.9; arm.castShadow=true; g.add(arm);
+      const up = new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,1.6,6), mat);
+      up.position.set(1.5*s, rand(3.2,4), 0); up.castShadow=true; g.add(up);
+    }
+  }
+  return g;
+}
+function palm(withFruit){
+  const g = new THREE.Group();
+  const trunkMat = new THREE.MeshStandardMaterial({ color:0x8a5a2b, roughness:1, flatShading:true });
+  const h = rand(7,11);
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.8,h,7), trunkMat);
+  trunk.position.y = h/2; trunk.castShadow=true; trunk.rotation.z = rand(-.1,.1); g.add(trunk);
+  const leafMat = new THREE.MeshStandardMaterial({ color:0x3f8f3a, roughness:.9, flatShading:true, side:THREE.DoubleSide });
+  for(let i=0;i<7;i++){
+    const leaf = new THREE.Mesh(new THREE.ConeGeometry(1.1,5,4), leafMat);
+    const a = (i/7)*Math.PI*2;
+    leaf.position.set(Math.cos(a)*2.2, h-0.3, Math.sin(a)*2.2);
+    leaf.rotation.z = Math.PI/2 - 0.5; leaf.rotation.y = -a; leaf.castShadow=true; g.add(leaf);
+  }
+  if(withFruit){
+    const fruitMat = new THREE.MeshStandardMaterial({ color:0xffb43b, roughness:.6, emissive:0x5a3000, emissiveIntensity:.2 });
+    for(let i=0;i<3;i++){
+      const f = new THREE.Mesh(new THREE.SphereGeometry(0.5,8,8), fruitMat);
+      f.position.set(rand(-1,1), h-1.2, rand(-1,1)); g.add(f);
+    }
+  }
+  return g;
+}
+function rock(){
+  const mat = new THREE.MeshStandardMaterial({ color:0xa08862, roughness:1, flatShading:true });
+  const m = new THREE.Mesh(new THREE.DodecahedronGeometry(rand(1,2.4),0), mat);
+  m.rotation.set(rand(0,3),rand(0,3),rand(0,3)); m.castShadow=true; return m;
+}
+
+/* ----- wooden name-plate signs painted with text (canvas texture) ----- */
+function makeTextTexture(text){
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 352;   // hi-res so it stays crisp when huge
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#f4e6c6'; ctx.fillRect(0,0,c.width,c.height);           // parchment plaque
+  ctx.strokeStyle = '#7a5223'; ctx.lineWidth = 26;
+  ctx.strokeRect(18,18,c.width-36,c.height-36);                            // border
+  ctx.fillStyle = '#5a3a12';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  // fit the text to the plaque width
+  let size = 132; ctx.font = `bold ${size}px Georgia, "Times New Roman", serif`;
+  while(ctx.measureText(text).width > c.width-140 && size > 40){ size -= 4; ctx.font = `bold ${size}px Georgia, serif`; }
+  ctx.fillText(text, c.width/2, c.height/2 + 8);
+  const tex = new THREE.CanvasTexture(c);
+  tex.anisotropy = 8;
+  return tex;
+}
+function makeSign(x, z, text, scale){
+  const g = new THREE.Group();
+  const wood = new THREE.MeshStandardMaterial({ color:0x8a5a2b, roughness:1, flatShading:true });
+  const ASPECT = 1024/352;               // text-canvas aspect ratio
+  const bw = 4.2, bh = bw/ASPECT + 0.5;  // board sized to the text, plus a margin frame
+  // board
+  const board = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, 0.22), wood);
+  board.position.set(0, 3.0, 0); board.castShadow=true; g.add(board);
+  // posts BEHIND the board (z<0) so they never cover the lettering
+  const post = new THREE.CylinderGeometry(0.15,0.15,4.0,8);
+  const p1 = new THREE.Mesh(post, wood); p1.position.set(-bw*0.4, 2.0, -0.2); p1.castShadow=true; g.add(p1);
+  const p2 = new THREE.Mesh(post, wood); p2.position.set( bw*0.4, 2.0, -0.2); p2.castShadow=true; g.add(p2);
+  // text on both faces, sized to the texture aspect so nothing is cropped
+  const tw = bw*0.9, th = tw/ASPECT;
+  const tex  = makeTextTexture(text);
+  const tmat = new THREE.MeshBasicMaterial({ map:tex, transparent:true });
+  const front = new THREE.Mesh(new THREE.PlaneGeometry(tw, th), tmat);
+  front.position.set(0, 3.0, 0.13); g.add(front);           // clearly in front of the board
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(tw, th), tmat);
+  back.position.set(0, 3.0, -0.13); back.rotation.y = Math.PI; g.add(back);
+  g.position.set(x, groundY(x,z), z);
+  g.scale.setScalar(scale||1);
+  scene.add(g); scenery.push(g);
+  return g;
+}
+
+/* ============================ BOY =============================== */
+function buildBoy(){
+  // The boy faces +Z (his local front). His eyes/nose are on the +Z side,
+  // and he is turned to face whichever way he walks.
+  const g = new THREE.Group();
+  const skin  = new THREE.MeshStandardMaterial({ color:0xd9a066, roughness:.9, flatShading:true });
+  const white = new THREE.MeshStandardMaterial({ color:0xf7f7f2, roughness:1, flatShading:true }); // kandora
+  const dark  = new THREE.MeshStandardMaterial({ color:0x2b1a0e, roughness:1, flatShading:true }); // eyes/hair
+  const sandal= new THREE.MeshStandardMaterial({ color:0x6b4a2b, roughness:1, flatShading:true });
+
+  // --- traditional white kandora: long, ankle-length, gently flared robe ---
+  const robe = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.95,2.0,10), white);
+  robe.position.y = 1.0; robe.castShadow = true; g.add(robe);
+  // shoulders / yoke
+  const shoulders = new THREE.Mesh(new THREE.SphereGeometry(0.52,10,10,0,Math.PI*2,0,Math.PI/2), white);
+  shoulders.position.y = 1.95; shoulders.scale.set(1,0.5,0.7); g.add(shoulders);
+  // subtle embroidered neckline placket down the front (+Z)
+  const placket = new THREE.Mesh(new THREE.BoxGeometry(0.06,0.6,0.02), new THREE.MeshStandardMaterial({color:0xe8dcc0}));
+  placket.position.set(0,1.75,0.48); g.add(placket);
+
+  // --- head + face on the +Z (front) side ---
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.42,12,12), skin);
+  head.position.y = 2.45; head.castShadow=true; g.add(head);
+  // white taqiyah (skull cap)
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.44,12,12,0,Math.PI*2,0,Math.PI*0.55), white);
+  cap.position.y = 2.5; g.add(cap);
+  // eyes (front = +Z)
+  const eyeGeo = new THREE.SphereGeometry(0.06,8,8);
+  const eyeL = new THREE.Mesh(eyeGeo, dark); eyeL.position.set(-0.15,2.5,0.37); g.add(eyeL);
+  const eyeR = new THREE.Mesh(eyeGeo, dark); eyeR.position.set( 0.15,2.5,0.37); g.add(eyeR);
+  // eyebrows
+  const browGeo = new THREE.BoxGeometry(0.14,0.03,0.03);
+  const browL = new THREE.Mesh(browGeo, dark); browL.position.set(-0.15,2.6,0.38); g.add(browL);
+  const browR = new THREE.Mesh(browGeo, dark); browR.position.set( 0.15,2.6,0.38); g.add(browR);
+  // nose
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.06,0.14,6), skin);
+  nose.position.set(0,2.42,0.42); nose.rotation.x = Math.PI/2; g.add(nose);
+
+  // --- sleeves (long white kandora sleeves) ---
+  const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.17,1.2,7), white);
+  armL.position.set(-0.55,1.35,0); armL.rotation.z = 0.12; armL.castShadow=true; g.add(armL);
+  const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.17,1.2,7), white);
+  armR.position.set( 0.55,1.35,0); armR.rotation.z = -0.12; armR.castShadow=true; g.add(armR);
+
+  // --- feet / sandals peeking out under the hem (also used for the walk animation) ---
+  const legL = new THREE.Mesh(new THREE.BoxGeometry(0.24,0.16,0.42), sandal);
+  legL.position.set(-0.22,0.08,0.12); g.add(legL);
+  const legR = new THREE.Mesh(new THREE.BoxGeometry(0.24,0.16,0.42), sandal);
+  legR.position.set( 0.22,0.08,0.12); g.add(legR);
+
+  // --- weapons (hidden until hunting) ---
+  const shaftMat = new THREE.MeshStandardMaterial({ color:0x6b4a2b, roughness:.9, flatShading:true });
+  const steelMat = new THREE.MeshStandardMaterial({ color:0xb9c2cc, roughness:.4, metalness:.5, flatShading:true });
+
+  // spear — held forward (+Z) in the right hand, for close strikes
+  const spear = new THREE.Group();
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,2.4,6), shaftMat);
+  shaft.rotation.x = Math.PI/2; spear.add(shaft);
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.11,0.4,6), steelMat);
+  tip.position.z = 1.4; tip.rotation.x = Math.PI/2; spear.add(tip);
+  spear.position.set(0.5, 1.45, 0.2);
+  spear.visible = false; g.add(spear);
+
+  // bow — held in the left hand, plane vertical, for ranged shots
+  const bow = new THREE.Group();
+  const arc = new THREE.Mesh(new THREE.TorusGeometry(0.55,0.05,6,20, Math.PI*1.25), shaftMat);
+  arc.rotation.z = Math.PI*0.375;   // stand the C upright (limbs top & bottom)
+  arc.rotation.y = Math.PI/2;       // turn the bow's plane to face forward (+Z)
+  bow.add(arc);
+  const string = new THREE.Mesh(new THREE.BoxGeometry(0.012,1.02,0.012),
+                    new THREE.MeshBasicMaterial({ color:0xf0e8d0 }));
+  string.position.z = -0.12; bow.add(string);
+  bow.position.set(-0.5, 1.5, 0.45);
+  bow.visible = false; g.add(bow);
+
+  // --- lampião (lantern) — carried at night ---
+  const lantern = new THREE.Group();
+  const metal = new THREE.MeshStandardMaterial({ color:0x3a2a18, roughness:.6, metalness:.4, flatShading:true });
+  const glassMat = new THREE.MeshStandardMaterial({ color:0xffd27a, emissive:0xff9d2e, emissiveIntensity:1.3,
+                     transparent:true, opacity:.85, flatShading:true });
+  const lcap  = new THREE.Mesh(new THREE.ConeGeometry(0.15,0.16,6), metal); lcap.position.y = 0.34; lantern.add(lcap);
+  const lhandle = new THREE.Mesh(new THREE.TorusGeometry(0.1,0.02,6,10,Math.PI), metal);
+  lhandle.position.y = 0.42; lantern.add(lhandle);
+  const lglass = new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.13,0.3,8), glassMat);
+  lglass.position.y = 0.14; lantern.add(lglass);
+  const lbase = new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.14,0.07,8), metal);
+  lbase.position.y = -0.02; lantern.add(lbase);
+  const lflame = new THREE.Mesh(new THREE.ConeGeometry(0.05,0.15,6),
+                    new THREE.MeshBasicMaterial({ color:0xffe08a })); lflame.position.y = 0.13; lantern.add(lflame);
+  const lanternLight = new THREE.PointLight(0xffb060, 0, 22, 2); lanternLight.position.y = 0.15; lantern.add(lanternLight);
+  lantern.position.set(0.55, 1.15, 0.45);   // hanging from the hand, held out front
+  lantern.visible = false; g.add(lantern);
+
+  g.userData = { armL, armR, legL, legR, spear, bow, lantern, lanternLight, lflame, glassMat };
+  g.scale.setScalar(0.9);
+  return g;
+}
+
+/* ============================ CAMEL ============================= */
+function buildCamel(){
+  const g = new THREE.Group();
+  const fur = new THREE.MeshStandardMaterial({ color:0xc79a5b, roughness:1, flatShading:true });
+  const dark = new THREE.MeshStandardMaterial({ color:0x8a6a3a, roughness:1, flatShading:true });
+
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.9,2.0,4,8), fur);
+  body.rotation.z = Math.PI/2; body.position.y = 2.0; body.castShadow=true; g.add(body);
+  const hump1 = new THREE.Mesh(new THREE.SphereGeometry(0.7,10,10), fur);
+  hump1.position.set(-0.4,2.7,0); hump1.scale.y=1.1; g.add(hump1);
+  const hump2 = hump1.clone(); hump2.position.x = 0.6; g.add(hump2);
+
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.55,2.0,7), fur);
+  neck.position.set(1.6,2.7,0); neck.rotation.z = -0.7; g.add(neck);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.9,0.6,0.6), fur);
+  head.position.set(2.4,3.4,0); head.castShadow=true; g.add(head);
+  const snout = new THREE.Mesh(new THREE.BoxGeometry(0.5,0.4,0.5), dark);
+  snout.position.set(2.85,3.25,0); g.add(snout);
+
+  const legGeo = new THREE.CylinderGeometry(0.22,0.18,2.0,6);
+  const legs = [];
+  const legPos = [[-0.8,0,0.5],[-0.8,0,-0.5],[0.9,0,0.5],[0.9,0,-0.5]];
+  for(const p of legPos){
+    const leg = new THREE.Mesh(legGeo, dark);
+    leg.position.set(p[0],1.0,p[2]); leg.castShadow=true; g.add(leg); legs.push(leg);
+  }
+  const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.05,1.2,5), dark);
+  tail.position.set(-1.8,2.2,0); tail.rotation.z = 0.5; g.add(tail);
+
+  g.userData = { legs, head };
+  return g;
+}
+
+/* ============================ FALCON ============================ */
+function buildFalcon(){
+  const g = new THREE.Group();
+  const body = new THREE.MeshStandardMaterial({ color:0x6e5236, roughness:.9, flatShading:true });
+  const light = new THREE.MeshStandardMaterial({ color:0xc9b18a, roughness:.9, flatShading:true });
+  const b = new THREE.Mesh(new THREE.CapsuleGeometry(0.25,0.7,3,6), body);
+  b.rotation.z = Math.PI/2; g.add(b);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.28,8,8), body);
+  head.position.x = 0.6; g.add(head);
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.09,0.25,6), new THREE.MeshStandardMaterial({color:0xf2c14e}));
+  beak.position.set(0.85,0,0); beak.rotation.z = -Math.PI/2; g.add(beak);
+  const wingGeo = new THREE.BoxGeometry(0.9,0.06,0.5);
+  const wingL = new THREE.Mesh(wingGeo, light); wingL.position.set(0,0,0.5); g.add(wingL);
+  const wingR = new THREE.Mesh(wingGeo, light); wingR.position.set(0,0,-0.5); g.add(wingR);
+  g.userData = { wingL, wingR };
+  g.scale.setScalar(1.1);
+  return g;
+}
+
+/* ============================ ANIMAL ============================ */
+function buildAnimal(){
+  const g = new THREE.Group();
+  const fur = new THREE.MeshStandardMaterial({ color:0xcaa877, roughness:1, flatShading:true });
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.45,8,8), fur);
+  body.scale.set(1.3,1,1); body.position.y=0.45; body.castShadow=true; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.3,8,8), fur);
+  head.position.set(0.55,0.6,0); g.add(head);
+  const earGeo = new THREE.CapsuleGeometry(0.06,0.4,3,5);
+  const earL = new THREE.Mesh(earGeo, fur); earL.position.set(0.55,1.0,0.12); g.add(earL);
+  const earR = new THREE.Mesh(earGeo, fur); earR.position.set(0.55,1.0,-0.12); g.add(earR);
+  const tail = new THREE.Mesh(new THREE.SphereGeometry(0.15,6,6), new THREE.MeshStandardMaterial({color:0xffffff}));
+  tail.position.set(-0.6,0.5,0); g.add(tail);
+  return g;
+}
+
+/* ======================= SCENE OBJECTS =========================== */
+let boy, camel, falcon, groundMesh, targetMarker;
+const scenery = [];
+const collectibles = [];   // {mesh,type,r}
+const animals = [];        // {mesh,vel,dir,alive,fleeTimer}
+let falconWild = null;     // untamed falcon in the world {mesh, pos}
+
+function scatter(){
+  // cacti, palms, rocks, bushes
+  for(let i=0;i<70;i++){
+    const x=rand(-WORLD,WORLD), z=rand(-WORLD,WORLD);
+    if(Math.hypot(x,z)<14) continue;
+    const c = cactus(); c.position.set(x, groundY(x,z), z); scene.add(c); scenery.push(c);
+  }
+  for(let i=0;i<28;i++){
+    const x=rand(-WORLD,WORLD), z=rand(-WORLD,WORLD);
+    if(Math.hypot(x,z)<14) continue;
+    const p = palm(false); p.position.set(x, groundY(x,z), z); scene.add(p); scenery.push(p);
+  }
+  for(let i=0;i<40;i++){
+    const x=rand(-WORLD,WORLD), z=rand(-WORLD,WORLD);
+    const r = rock(); r.position.set(x, groundY(x,z)+0.6, z); scene.add(r); scenery.push(r);
+  }
+}
+
+// oases: water pools you can drink from
+function makeOasis(x,z){
+  const g = new THREE.Group();
+  const water = new THREE.Mesh(new THREE.CircleGeometry(6,24),
+    new THREE.MeshStandardMaterial({ color:0x2e93d6, roughness:.15, metalness:.3, transparent:true, opacity:.9 }));
+  water.rotateX(-Math.PI/2); water.position.y = 0.2; g.add(water);
+  const rim = new THREE.Mesh(new THREE.RingGeometry(6,7.5,24),
+    new THREE.MeshStandardMaterial({ color:0x6f8f3a, roughness:1, side:THREE.DoubleSide }));
+  rim.rotateX(-Math.PI/2); rim.position.y = 0.18; g.add(rim);
+  g.position.set(x, groundY(x,z), z);
+  scene.add(g);
+  // palms with fruit around the oasis
+  for(let i=0;i<4;i++){
+    const a=rand(0,6.28), px=x+Math.cos(a)*8, pz=z+Math.sin(a)*8;
+    const p = palm(true); p.position.set(px, groundY(px,pz), pz); scene.add(p);
+  }
+  collectibles.push({ mesh:g, type:'water', r:7, cooldown:0 });
+}
+
+// plant bushes and fruit clusters you can pick up
+function makeCollectible(type,x,z){
+  const g = new THREE.Group();
+  if(type==='plant'){
+    const mat = new THREE.MeshStandardMaterial({ color:0x5fa83a, roughness:1, flatShading:true });
+    for(let i=0;i<4;i++){
+      const b = new THREE.Mesh(new THREE.IcosahedronGeometry(rand(.4,.7),0), mat);
+      b.position.set(rand(-.5,.5), rand(.4,.8), rand(-.5,.5)); g.add(b);
+    }
+    // little flowers
+    const fm = new THREE.MeshStandardMaterial({ color:0xff7fb0, emissive:0x551133, emissiveIntensity:.2 });
+    for(let i=0;i<3;i++){ const f=new THREE.Mesh(new THREE.SphereGeometry(.12,6,6),fm); f.position.set(rand(-.5,.5),rand(.6,1),rand(-.5,.5)); g.add(f); }
+  } else { // fruit bush
+    const bush = new THREE.Mesh(new THREE.IcosahedronGeometry(0.9,0),
+      new THREE.MeshStandardMaterial({ color:0x3f7d3a, roughness:1, flatShading:true }));
+    bush.position.y = 0.9; g.add(bush);
+    const fm = new THREE.MeshStandardMaterial({ color:0xe23b3b, roughness:.6, emissive:0x400, emissiveIntensity:.3 });
+    for(let i=0;i<5;i++){ const f=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8),fm);
+      f.position.set(rand(-.7,.7),rand(.6,1.4),rand(-.7,.7)); g.add(f); }
+  }
+  g.position.set(x, groundY(x,z), z);
+  scene.add(g);
+  collectibles.push({ mesh:g, type, r:3.2, cooldown:0 });
+}
+
+function spawnAnimal(){
+  const x=rand(-WORLD*.8,WORLD*.8), z=rand(-WORLD*.8,WORLD*.8);
+  const m = buildAnimal(); m.position.set(x, groundY(x,z), z);
+  scene.add(m);
+  animals.push({ mesh:m, dir:rand(0,6.28), speed:rand(2,4), alive:true, hop:rand(0,6.28), fleeing:0 });
+}
+
+/* ======================= CAMERA + INPUT ========================= */
+let camYaw = 0, camPitch = 0.5, camDist = 16;
+let dragging = false, lastX=0, lastY=0, downX=0, downY=0, draggedFar=false;
+let moveTarget = null;                 // {x,z} destination from a click, or null
+let pendingAction = null;              // {kind:'animal'|'collect'|'falcon', ref} — walk there then act
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+
+function showMarker(x,z){
+  if(!targetMarker) return;
+  targetMarker.position.set(x, groundY(x,z)+0.15, z);
+  targetMarker.visible = true;
+}
+
+// walk to a ground point (no action attached)
+function walkTo(x,z){
+  pendingAction = null;
+  moveTarget = { x: clamp(x,-WORLD,WORLD), z: clamp(z,-WORLD,WORLD) };
+  showMarker(moveTarget.x, moveTarget.z);
+}
+
+// climb from a hit child mesh up to the top-level group under the scene
+function topGroup(obj){ while(obj.parent && obj.parent!==scene) obj = obj.parent; return obj; }
+
+// A click: if it lands on an animal / plant / fruit / oasis / falcon, open an action
+// menu; otherwise walk to that spot on the sand.
+function handleClick(cx, cy){
+  if(!state.running || !groundMesh) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  ndc.set(((cx-rect.left)/rect.width)*2-1, -((cy-rect.top)/rect.height)*2+1);
+  raycaster.setFromCamera(ndc, camera);
+
+  // 1) try to hit an interactable entity
+  const list = [];
+  for(const a of animals) if(a.alive) list.push(a.mesh);
+  for(const c of collectibles) if(c.type==='water' || c.mesh.visible) list.push(c.mesh);
+  if(falconWild) list.push(falconWild.mesh);
+  const eh = raycaster.intersectObjects(list, true);
+  if(eh.length){
+    const g = topGroup(eh[0].object);
+    const a = animals.find(o=>o.mesh===g && o.alive);
+    if(a){ openMenu(cx,cy,'animal',a); return; }
+    const c = collectibles.find(o=>o.mesh===g);
+    if(c){ openMenu(cx,cy,c.type,c); return; }
+    if(falconWild && falconWild.mesh===g){ openMenu(cx,cy,'falcon',falconWild); return; }
+  }
+  // 2) otherwise walk to the sand point under the cursor
+  const gh = raycaster.intersectObject(groundMesh);
+  if(gh.length) walkTo(gh[0].point.x, gh[0].point.z);
+}
+
+/* ---- click-to-act menu ---- */
+const ctxMenu = document.getElementById('ctxMenu');
+let menuOpen = false;
+function hideMenu(){ menuOpen=false; ctxMenu.classList.remove('show'); ctxMenu.innerHTML=''; }
+function entityPos(kind, ref){
+  if(kind==='falcon') return ref.mesh.position;
+  return ref.mesh.position;
+}
+function openMenu(cx, cy, kind, ref){
+  const label = { animal:'🐾 Desert animal', plant:'🌿 Plant', fruit:'🍎 Fruit bush', water:'💧 Oasis', falcon:'🦅 Wild falcon' }[kind];
+  const items = [{ title:label }];
+  const pos = entityPos(kind, ref);
+  if(kind==='animal') items.push({ label:'🏹 Hunt it', act:()=>{ pendingAction={kind:'animal', ref}; moveTarget=null; } });
+  else if(kind==='plant') items.push({ label:'🌿 Gather', act:()=>{ pendingAction={kind:'collect', ref}; moveTarget=null; } });
+  else if(kind==='fruit') items.push({ label:'🍎 Pick fruit', act:()=>{ pendingAction={kind:'collect', ref}; moveTarget=null; } });
+  else if(kind==='water') items.push({ label:'💧 Drink', act:()=>{ pendingAction={kind:'collect', ref}; moveTarget=null; } });
+  else if(kind==='falcon') items.push({ label:'🦅 Tame it', act:()=>{ pendingAction={kind:'falcon', ref}; moveTarget=null; } });
+  items.push({ label:'🚶 Walk here', act:()=>walkTo(pos.x, pos.z) });
+  items.push({ label:'✕ Cancel', act:()=>{} });
+  buildMenu(cx, cy, items);
+}
+function buildMenu(cx, cy, items){
+  ctxMenu.innerHTML='';
+  for(const it of items){
+    const b = document.createElement(it.title ? 'div' : 'button');
+    b.className = 'mi' + (it.title ? ' title' : '');
+    b.textContent = it.title || it.label;
+    if(!it.title) b.addEventListener('click', e=>{ e.stopPropagation(); it.act(); hideMenu(); });
+    ctxMenu.appendChild(b);
+  }
+  ctxMenu.classList.add('show');
+  menuOpen = true;
+  // position, clamped to the viewport
+  const mw = ctxMenu.offsetWidth, mh = ctxMenu.offsetHeight;
+  ctxMenu.style.left = Math.min(cx, innerWidth  - mw - 8) + 'px';
+  ctxMenu.style.top  = Math.min(cy, innerHeight - mh - 8) + 'px';
+}
+// swallow clicks inside the menu so they don't reach the canvas
+if(ctxMenu){ ['mousedown','mouseup','click'].forEach(ev=> ctxMenu.addEventListener(ev, e=>e.stopPropagation())); }
+
+// resolve the pending action into a destination + what to do on arrival
+function resolvePending(){
+  const pa = pendingAction; if(!pa) return null;
+  if(pa.kind==='animal'){
+    const a = pa.ref; if(!a.alive) return null;
+    return { x:a.mesh.position.x, z:a.mesh.position.z, range:4.5, doIt:()=>huntAnimal(a) };
+  }
+  if(pa.kind==='collect'){
+    const c = pa.ref; if(c.cooldown>0 || (c.type!=='water' && !c.mesh.visible)) return null;
+    return { x:c.mesh.position.x, z:c.mesh.position.z, range:Math.max(2, c.r-0.5), doIt:()=>collectItem(c) };
+  }
+  if(pa.kind==='falcon'){
+    if(!falconWild) return null;
+    return { x:falconWild.mesh.position.x, z:falconWild.mesh.position.z, range:7, doIt:()=>tameFalcon() };
+  }
+  return null;
+}
+
+function initCameraControls(){
+  const dom = renderer.domElement;
+
+  // Mouse: DRAG to look around, single CLICK on the ground to walk there.
+  dom.addEventListener('mousedown', e=>{
+    dragging=true; draggedFar=false;
+    lastX=downX=e.clientX; lastY=downY=e.clientY;
+  });
+  addEventListener('mousemove', e=>{
+    if(!dragging) return;
+    if(Math.abs(e.clientX-downX)+Math.abs(e.clientY-downY) > 6) draggedFar=true;
+    camYaw   -= (e.clientX-lastX)*0.005;
+    camPitch  = clamp(camPitch + (e.clientY-lastY)*0.004, 0.15, 1.2);
+    lastX=e.clientX; lastY=e.clientY;
+  });
+  addEventListener('mouseup', e=>{
+    if(menuOpen){ hideMenu(); dragging=false; return; }             // a click while the menu is open closes it
+    if(dragging && !draggedFar) handleClick(e.clientX, e.clientY);  // a click, not a drag
+    dragging=false;
+  });
+  dom.addEventListener('wheel', e=>{ camDist = clamp(camDist + e.deltaY*0.01, 8, 30); }, {passive:true});
+
+  // Touch: DRAG to look, TAP to walk to a spot.
+  dom.addEventListener('touchstart', e=>{
+    dragging=true; draggedFar=false;
+    lastX=downX=e.touches[0].clientX; lastY=downY=e.touches[0].clientY;
+  },{passive:true});
+  dom.addEventListener('touchmove', e=>{
+    if(Math.abs(e.touches[0].clientX-downX)+Math.abs(e.touches[0].clientY-downY) > 8) draggedFar=true;
+    camYaw -= (e.touches[0].clientX-lastX)*0.008;
+    camPitch = clamp(camPitch + (e.touches[0].clientY-lastY)*0.006, 0.15, 1.2);
+    lastX=e.touches[0].clientX; lastY=e.touches[0].clientY;
+  },{passive:true});
+  dom.addEventListener('touchend', e=>{
+    if(menuOpen){ hideMenu(); dragging=false; return; }
+    if(dragging && !draggedFar){ const t=e.changedTouches[0]; handleClick(t.clientX, t.clientY); }
+    dragging=false;
+  });
+}
+
+/* ========================= XP & LEVELS ========================== */
+function boyGainXp(n){
+  state.boy.xp += n;
+  while(state.boy.xp >= state.boy.xpNext){
+    state.boy.xp -= state.boy.xpNext;
+    state.boy.lvl++;
+    state.boy.xpNext = Math.round(state.boy.xpNext*1.4);
+    state.boy.hp = 100;
+    boy.scale.setScalar(clamp(0.9 + state.boy.lvl*0.03, 0.9, 1.4));
+    toast(`✨ You reached Level ${state.boy.lvl}!`);
+  }
+}
+function camelGainXp(n){
+  state.camel.xp += n;
+  while(state.camel.xp >= state.camel.xpNext){
+    state.camel.xp -= state.camel.xpNext;
+    state.camel.lvl++;
+    state.camel.xpNext = Math.round(state.camel.xpNext*1.5);
+    const s = clamp(0.55 + state.camel.lvl*0.13, 0.55, 1.35);
+    camel.scale.setScalar(s);
+    if(state.camel.lvl===3) toast('🐫 Your camel is growing strong!');
+    if(state.camel.lvl===5) toast('🐫 The camel is now an adult — press R to ride!');
+    else toast(`🐫 Camel reached Level ${state.camel.lvl}!`);
+  }
+}
+const camelAdult = () => state.camel.lvl >= 5;
+function camelStageName(){
+  if(state.camel.lvl>=5) return 'Adult';
+  if(state.camel.lvl>=3) return 'Young';
+  return 'Baby';
+}
+
+/* ======================== INTERACTIONS ========================== */
+let nearest = null; // current interactable
+
+// --- actions on a specific target (used by keys AND the click menu) ---
+function tameFalcon(){
+  if(!falconWild) return;
+  state.falcon = true;
+  scene.remove(falconWild.mesh); falconWild = null;
+  falcon.visible = true;
+  document.getElementById('falconRow').style.display='';
+  toast('🦅 The falcon is now your companion!');
+  boyGainXp(60);
+}
+function collectItem(c){
+  if(!c || c.cooldown>0) return;
+  if(c.type==='water'){
+    state.inv.water++; state.boy.water = 100;
+    boyGainXp(10); camelGainXp(8);
+    toast('💧 Refilled water (+10 XP)');
+    c.cooldown = 3;
+  } else if(c.type==='plant'){
+    state.inv.plant++;
+    boyGainXp(15); camelGainXp(20); // camel loves plants
+    toast('🌿 Gathered a plant (camel +20 XP)');
+    fadeAndRegrow(c);
+  } else if(c.type==='fruit'){
+    state.inv.fruit++;
+    boyGainXp(22); camelGainXp(10);
+    toast('🍎 Picked fruit (+22 XP)');
+    fadeAndRegrow(c);
+  }
+}
+// --- hunting with a weapon: spear up close, bow & arrow at range ---
+const huntFx = { active:false, mode:null, t:0, hit:false, target:null, arrow:null };
+const SPEAR_RANGE = 3.5;   // closer than this → thrust the spear; otherwise loose an arrow
+
+function makeArrow(){
+  const g = new THREE.Group();
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,0.8,6),
+                  new THREE.MeshStandardMaterial({ color:0x6b4a2b, flatShading:true }));
+  shaft.rotation.x = Math.PI/2; g.add(shaft);                       // shaft along +Z
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.05,0.16,6),
+                  new THREE.MeshStandardMaterial({ color:0xb9c2cc, metalness:.5, roughness:.4 }));
+  tip.position.z = 0.46; tip.rotation.x = Math.PI/2; g.add(tip);
+  const fletch = new THREE.Mesh(new THREE.BoxGeometry(0.14,0.001,0.14),
+                  new THREE.MeshBasicMaterial({ color:0xefe6cf, side:THREE.DoubleSide }));
+  fletch.position.z = -0.36; g.add(fletch);
+  return g;
+}
+
+function huntAnimal(a){                 // begins the hunt animation; the kill lands mid-swing/on hit
+  if(!a || !a.alive || huntFx.active) return;
+  const dx = a.mesh.position.x - boy.position.x, dz = a.mesh.position.z - boy.position.z;
+  const dist = Math.hypot(dx,dz);
+  boyFacing = Math.atan2(dx,dz); boy.rotation.y = boyFacing;   // face the prey
+  a.hunting = true;                                            // freeze it while we strike
+  huntFx.active = true; huntFx.t = 0; huntFx.hit = false; huntFx.target = a;
+  huntFx.mode = dist <= SPEAR_RANGE ? 'spear' : 'bow';
+  boy.userData.spear.visible = huntFx.mode==='spear';
+  boy.userData.bow.visible   = huntFx.mode==='bow';
+  if(huntFx.mode==='bow'){
+    const arrow = makeArrow();
+    const hand = boy.localToWorld(new THREE.Vector3(-0.45, 1.35, 0.5));
+    arrow.position.copy(hand);
+    scene.add(arrow); huntFx.arrow = arrow;
+    toast('🏹 Arrow loosed!');
+  } else {
+    toast('🗡️ Spear strike!');
+  }
+}
+function finishHunt(a){                  // the actual kill + rewards
+  if(!a || !a.alive) return;
+  a.alive = false; a.hunting = false;
+  scene.remove(a.mesh);
+  state.inv.meat++;
+  const xp = state.falcon ? 45 : 30;
+  boyGainXp(xp); camelGainXp(6);
+  toast(`🍖 Hunted an animal! (+${xp} XP)`);
+  setTimeout(spawnAnimal, 8000);
+}
+function endHuntFx(){
+  boy.userData.spear.visible = false;
+  boy.userData.bow.visible   = false;
+  boy.userData.spear.position.z = 0.2;
+  if(huntFx.arrow){ scene.remove(huntFx.arrow); huntFx.arrow = null; }
+  huntFx.active = false; huntFx.target = null;
+}
+function updateHuntFx(dt){
+  if(!huntFx.active) return;
+  huntFx.t += dt;
+  const a = huntFx.target;
+  if(a){                                 // keep facing the prey
+    const dx=a.mesh.position.x-boy.position.x, dz=a.mesh.position.z-boy.position.z;
+    boyFacing = Math.atan2(dx,dz); boy.rotation.y = boyFacing;
+  }
+  if(huntFx.mode==='spear'){
+    const sp = boy.userData.spear;
+    const th = Math.sin(Math.min(huntFx.t/0.35,1)*Math.PI);   // thrust out then back
+    sp.position.z = 0.2 + th*0.8;
+    if(huntFx.t>0.26 && !huntFx.hit){ huntFx.hit=true; finishHunt(a); }
+    if(huntFx.t>0.55) endHuntFx();
+  } else {
+    const arrow = huntFx.arrow;
+    if(huntFx.t>0.15 && arrow && a){                          // brief draw, then the arrow flies
+      const tx=a.mesh.position.x, ty=a.mesh.position.y+0.5, tz=a.mesh.position.z;
+      const dx=tx-arrow.position.x, dy=ty-arrow.position.y, dz=tz-arrow.position.z;
+      const d = Math.hypot(dx,dy,dz);
+      arrow.rotation.set(-Math.atan2(dy, Math.hypot(dx,dz)), Math.atan2(dx,dz), 0, 'YXZ');
+      const step = 42*dt;
+      if(d<=step){ if(!huntFx.hit){ huntFx.hit=true; finishHunt(a); } endHuntFx(); }
+      else { arrow.position.set(arrow.position.x+dx/d*step, arrow.position.y+dy/d*step, arrow.position.z+dz/d*step); }
+    }
+    if(huntFx.t>1.4){ if(!huntFx.hit) finishHunt(a); endHuntFx(); }   // safety timeout
+  }
+}
+function fadeAndRegrow(c){
+  c.mesh.visible = false;
+  c.cooldown = 6; // regrows after a short while
+}
+
+function tryCollect(){
+  if(!nearest) return;
+  if(nearest.kind==='falcon') tameFalcon();
+  else collectItem(nearest.obj);
+}
+function tryHunt(){
+  // find nearest alive animal within range of boy
+  const p = boy.position;
+  let best=null, bd=6;
+  for(const a of animals){
+    if(!a.alive) continue;
+    const d = a.mesh.position.distanceTo(p);
+    if(d<bd){ bd=d; best=a; }
+  }
+  if(!best){ toast('No animal close enough to hunt'); return; }
+  huntAnimal(best);
+}
+
+function tryConsume(){
+  if(state.inv.meat>0 && state.boy.food<100){
+    state.inv.meat--; state.boy.food = clamp(state.boy.food+35,0,100);
+    toast('🍖 Ate meat (+food)'); return;
+  }
+  if(state.inv.fruit>0 && state.boy.food<100){
+    state.inv.fruit--; state.boy.food = clamp(state.boy.food+22,0,100);
+    toast('🍎 Ate fruit (+food)'); return;
+  }
+  if(state.inv.water>0 && state.boy.water<100){
+    state.inv.water--; state.boy.water = clamp(state.boy.water+40,0,100);
+    toast('💧 Drank water'); return;
+  }
+  toast('Nothing useful to consume right now');
+}
+
+// edge-triggered key handling
+const pressed = {};
+function keyPressed(code){
+  if(keys[code] && !pressed[code]){ pressed[code]=true; return true; }
+  if(!keys[code]) pressed[code]=false;
+  return false;
+}
+
+/* =========================== UPDATE ============================= */
+const tmp = new THREE.Vector3();
+let boyFacing = 0;
+const legPhase = { v:0 };
+
+function update(dt){
+  state.time = (state.time + dt*0.01) % 1;
+
+  /* ---- movement input relative to camera ---- */
+  const run = keys['ShiftLeft']||keys['ShiftRight'];
+  let baseSpeed = state.riding ? 16 : 7;
+  if(run) baseSpeed *= 1.6;
+  // riding costs less energy but still moves; food/water gate speed
+  if(state.boy.food<15 || state.boy.water<15) baseSpeed *= 0.5;
+
+  // fwd = toward where the camera looks; strafe = camera-right
+  const fwd    = ((keys['KeyW']||keys['ArrowUp'])   ?1:0) - ((keys['KeyS']||keys['ArrowDown']) ?1:0);
+  const strafe = ((keys['KeyD']||keys['ArrowRight'])?1:0) - ((keys['KeyA']||keys['ArrowLeft']) ?1:0);
+
+  let moving = false;
+  if(huntFx.active){
+    // stand still and strike while the hunt animation plays
+  } else if(fwd||strafe){
+    // manual WASD walking cancels any click destination / queued action
+    moving = true;
+    moveTarget = null; pendingAction = null;
+    if(targetMarker) targetMarker.visible = false;
+    const sin=Math.sin(camYaw), cos=Math.cos(camYaw);
+    // camera-forward on the ground = (sin, cos); camera-right (screen right) = (-cos, sin)
+    let dx = sin*fwd - cos*strafe;
+    let dz = cos*fwd + sin*strafe;
+    const len = Math.hypot(dx,dz); dx/=len; dz/=len;
+    boyFacing = Math.atan2(dx,dz);            // boy faces the way he walks
+    boy.position.x = clamp(boy.position.x + dx*baseSpeed*dt, -WORLD, WORLD);
+    boy.position.z = clamp(boy.position.z + dz*baseSpeed*dt, -WORLD, WORLD);
+    legPhase.v += dt*baseSpeed*1.2;
+  } else {
+    // a queued action (from the click menu): chase the target, act once in range
+    if(pendingAction){
+      const r = resolvePending();
+      if(!r){ pendingAction=null; moveTarget=null; if(targetMarker) targetMarker.visible=false; }
+      else if(Math.hypot(r.x-boy.position.x, r.z-boy.position.z) <= r.range){
+        r.doIt(); pendingAction=null; moveTarget=null; if(targetMarker) targetMarker.visible=false;
+      } else {
+        moveTarget = { x:r.x, z:r.z };          // follow the (possibly moving) target
+        if(targetMarker) targetMarker.visible=false;
+      }
+    }
+    if(moveTarget){
+      let dx = moveTarget.x - boy.position.x;
+      let dz = moveTarget.z - boy.position.z;
+      const dist = Math.hypot(dx,dz);
+      if(dist > 0.6){
+        moving = true;
+        dx/=dist; dz/=dist;
+        boyFacing = Math.atan2(dx,dz);
+        boy.position.x = clamp(boy.position.x + dx*baseSpeed*dt, -WORLD, WORLD);
+        boy.position.z = clamp(boy.position.z + dz*baseSpeed*dt, -WORLD, WORLD);
+        legPhase.v += dt*baseSpeed*1.2;
+      } else if(!pendingAction){
+        moveTarget = null;                       // arrived at a plain ground point
+        if(targetMarker) targetMarker.visible = false;
+      }
+    }
+  }
+  boy.position.y = groundY(boy.position.x, boy.position.z);
+  boy.rotation.y = boyFacing;
+
+  // pulse the destination marker
+  if(targetMarker && targetMarker.visible){
+    const s = 1 + Math.sin(performance.now()*0.006)*0.15;
+    targetMarker.scale.set(s,s,s);
+  }
+
+  // walking animation for boy legs/arms
+  const ud = boy.userData;
+  const sw = Math.sin(legPhase.v)* (moving?0.5:0);
+  ud.legL.rotation.x =  sw; ud.legR.rotation.x = -sw;
+  ud.armL.rotation.x = -sw; ud.armR.rotation.x =  sw;
+
+  /* ---- camel behaviour ---- */
+  if(state.riding){
+    // boy sits on camel: place camel under boy, boy on hump
+    camel.position.copy(boy.position);
+    camel.rotation.y = boyFacing - Math.PI/2; // camel model faces +x, so offset from boy's +z facing
+    boy.position.y = groundY(boy.position.x,boy.position.z) + 2.6*camel.scale.y;
+    boy.rotation.y = boyFacing;
+  } else {
+    // follow the boy at a distance
+    tmp.copy(boy.position).sub(camel.position);
+    const dist = tmp.length();
+    const followDist = 5;
+    if(dist>followDist){
+      tmp.normalize();
+      const cspeed = Math.min(baseSpeed*1.05, 12);
+      camel.position.x += tmp.x*cspeed*dt;
+      camel.position.z += tmp.z*cspeed*dt;
+      camel.rotation.y = Math.atan2(-tmp.z, tmp.x); // camel model faces +x → point its head the way it walks
+      // leg animation
+      const cl = camel.userData.legs; const cs = Math.sin(legPhase.v*1.1)*0.4;
+      cl[0].rotation.x=cs; cl[3].rotation.x=cs; cl[1].rotation.x=-cs; cl[2].rotation.x=-cs;
+    }
+    camel.position.y = groundY(camel.position.x, camel.position.z);
+  }
+
+  /* ---- falcon (companion or wild) ---- */
+  if(state.falcon){
+    const t = performance.now()*0.001;
+    const cx = boy.position.x + Math.cos(t*0.8)*6;
+    const cz = boy.position.z + Math.sin(t*0.8)*6;
+    falcon.position.set(cx, boy.position.y + 9 + Math.sin(t*2)*0.6, cz);
+    falcon.rotation.y = -t*0.8;
+    const flap = Math.sin(t*10)*0.6;
+    falcon.userData.wingL.rotation.x = flap; falcon.userData.wingR.rotation.x = -flap;
+  } else if(falconWild){
+    const t = performance.now()*0.001;
+    falconWild.mesh.position.y = falconWild.base + Math.sin(t*2)*0.4;
+    falconWild.mesh.rotation.y = t*0.5;
+    const flap = Math.sin(t*8)*0.5;
+    falconWild.mesh.userData.wingL.rotation.x = flap; falconWild.mesh.userData.wingR.rotation.x = -flap;
+  }
+
+  /* ---- animals wander & flee ---- */
+  for(const a of animals){
+    if(!a.alive || a.hunting) continue;   // frozen while being hunted
+    const m = a.mesh;
+    const dToBoy = m.position.distanceTo(boy.position);
+    if(dToBoy < 12){ // flee from boy
+      tmp.copy(m.position).sub(boy.position).normalize();
+      a.dir = Math.atan2(tmp.x, tmp.z);
+      a.fleeing = 1;
+    } else if(Math.random()<0.01){
+      a.dir += rand(-1,1); a.fleeing = 0;
+    }
+    const sp = a.fleeing ? a.speed*2.2 : a.speed;
+    m.position.x = clamp(m.position.x + Math.sin(a.dir)*sp*dt, -WORLD, WORLD);
+    m.position.z = clamp(m.position.z + Math.cos(a.dir)*sp*dt, -WORLD, WORLD);
+    m.position.y = groundY(m.position.x,m.position.z) + Math.abs(Math.sin(a.hop))*0.3;
+    m.rotation.y = a.dir;
+    a.hop += dt*10;
+  }
+
+  /* ---- cooldowns / regrow ---- */
+  for(const c of collectibles){
+    if(c.cooldown>0){
+      c.cooldown -= dt;
+      if(c.cooldown<=0 && c.type!=='water'){ c.mesh.visible=true; }
+    }
+  }
+
+  /* ---- survival stats ---- */
+  const drain = state.riding ? 0.15 : 0.25;   // gentler hunger/thirst so you can explore longer
+  state.boy.food  = clamp(state.boy.food  - dt*drain, 0, 100);
+  state.boy.water = clamp(state.boy.water - dt*(drain+0.12), 0, 100);
+  if(state.boy.food<=0 || state.boy.water<=0){
+    state.boy.hp = clamp(state.boy.hp - dt*2, 0, 100);   // starve slower
+    if(state.boy.hp<=0){
+      // gentle "reset": teleport to origin, refill
+      toast('😵 You collapsed! Rescued at camp — take care of food & water.');
+      state.boy.hp=80; state.boy.food=80; state.boy.water=80;
+      boy.position.set(0,0,0);
+    }
+  } else if(state.boy.hp<100){
+    state.boy.hp = clamp(state.boy.hp + dt*4, 0, 100);   // heal faster when fed & watered
+  }
+
+  /* ---- find nearest interactable ---- */
+  nearest = null;
+  let bestD = 99;
+  for(const c of collectibles){
+    if(!c.mesh.visible && c.type!=='water') continue;
+    if(c.cooldown>0) continue;
+    const d = c.mesh.position.distanceTo(boy.position);
+    if(d < c.r && d < bestD){ bestD=d; nearest={kind:'collect', obj:c}; }
+  }
+  if(falconWild){
+    const d = falconWild.mesh.position.distanceTo(boy.position);
+    if(d < 8 && d < bestD){ bestD=d; nearest={kind:'falcon'}; }
+  }
+
+  /* ---- key actions (edge triggered) ---- */
+  if(keyPressed('KeyE')) tryCollect();
+  if(keyPressed('KeyF')) tryHunt();
+  if(keyPressed('Space')) tryConsume();
+  if(keyPressed('KeyR')){
+    if(state.riding){ state.riding=false; toast('🚶 Dismounted'); }
+    else if(camelAdult() && camel.position.distanceTo(boy.position)<6){ state.riding=true; toast('🐫 Riding the camel — much faster!'); }
+    else if(!camelAdult()) toast('🐫 The camel is too young to ride yet');
+    else toast('🐫 Get closer to the camel to ride');
+  }
+
+  updateHuntFx(dt);
+  updateCamera(dt);
+  updateHUD();
+}
+
+function updateCamera(dt){
+  const target = tmp.set(boy.position.x, boy.position.y+ (state.riding?3:2), boy.position.z);
+  const ox = Math.sin(camYaw)*Math.cos(camPitch)*camDist;
+  const oz = Math.cos(camYaw)*Math.cos(camPitch)*camDist;
+  const oy = Math.sin(camPitch)*camDist;
+  camera.position.lerp(new THREE.Vector3(target.x-ox, target.y+oy, target.z-oz), 1-Math.pow(0.001,dt));
+  camera.lookAt(target);
+}
+
+/* =========================== HUD ================================ */
+function pct(v,m){ return Math.max(0,Math.min(100,(v/m)*100))+'%'; }
+function updateHUD(){
+  const b=state.boy, c=state.camel;
+  document.getElementById('boyLv').textContent = b.lvl;
+  document.getElementById('boyXp').style.width = pct(b.xp,b.xpNext);
+  document.getElementById('boyXpV').textContent = Math.round(b.xp);
+  document.getElementById('hp').style.width = b.hp+'%';
+  document.getElementById('hpV').textContent = Math.round(b.hp);
+  document.getElementById('food').style.width = b.food+'%';
+  document.getElementById('foodV').textContent = Math.round(b.food);
+  document.getElementById('water').style.width = b.water+'%';
+  document.getElementById('waterV').textContent = Math.round(b.water);
+
+  document.getElementById('camelLv').textContent = c.lvl;
+  document.getElementById('camelStage').textContent = camelStageName();
+  document.getElementById('camelXp').style.width = pct(c.xp,c.xpNext);
+  document.getElementById('camelXpV').textContent = Math.round(c.xp);
+
+  document.getElementById('cntPlant').textContent = state.inv.plant;
+  document.getElementById('cntFruit').textContent = state.inv.fruit;
+  document.getElementById('cntWater').textContent = state.inv.water;
+  document.getElementById('cntMeat').textContent  = state.inv.meat;
+
+  // prompt
+  const p = document.getElementById('prompt');
+  if(nearest){
+    p.classList.add('show');
+    if(nearest.kind==='falcon') p.innerHTML = 'Wild falcon — press <kbd>E</kbd> to tame it';
+    else {
+      const t = nearest.obj.type;
+      const verb = t==='water' ? 'drink' : 'gather';
+      p.innerHTML = `Press <kbd>E</kbd> to ${verb} ${t==='water'?'💧 water':t==='plant'?'🌿 plant':'🍎 fruit'}`;
+    }
+  } else {
+    p.classList.remove('show');
+  }
+
+  // clock label
+  const t = state.time;
+  let label='Morning';
+  if(t<0.25) label='Dawn 🌅'; else if(t<0.5) label='Midday ☀️';
+  else if(t<0.7) label='Afternoon 🌤️'; else if(t<0.85) label='Sunset 🌇'; else label='Night 🌙';
+  document.getElementById('timeLabel').textContent = label;
+
+  // sky/light tint with time
+  applyDayNight(t);
+}
+
+let sun, hemi;
+function applyDayNight(t){
+  // t: 0..1 ; brightest at 0.4
+  const day = Math.max(0.05, Math.sin(t*Math.PI));   // 0 at night edges
+  sun.intensity = 0.4 + day*1.4;
+  hemi.intensity = 0.3 + day*0.7;
+  const nightCol = new THREE.Color(0x11213a);
+  const dayCol   = new THREE.Color(0xffdca8);
+  const col = nightCol.clone().lerp(dayCol, day);
+  sun.color.copy(col);
+  // sky/fog
+  const skyNight = new THREE.Color(0x0d1830), skyDay = new THREE.Color(0x87c6ff);
+  const sky = skyNight.clone().lerp(skyDay, day);
+  scene.background = sky; scene.fog.color = sky;
+  // move sun across sky
+  const a = t*Math.PI;
+  sun.position.set(Math.cos(a)*80, Math.sin(a)*100+5, 40);
+
+  // lampião — the boy holds a lit lantern once it gets dark
+  if(boy && boy.userData.lantern){
+    const dark = day < 0.4;
+    const ud = boy.userData;
+    ud.lantern.visible = dark;
+    if(dark){
+      const flicker = 0.85 + Math.sin(performance.now()*0.02)*0.1 + Math.sin(performance.now()*0.053)*0.05;
+      // brighter the darker it gets
+      ud.lanternLight.intensity = (1.2 + (0.4-day)/0.4*2.2) * flicker;
+      ud.glassMat.emissiveIntensity = 1.1 * flicker;
+      ud.lflame.scale.y = flicker;
+    } else {
+      ud.lanternLight.intensity = 0;
+    }
+  }
+}
+
+/* =========================== INIT =============================== */
+function init(){
+  scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x87c6ff, 140, 380);   // pushed back so the big signs are visible from far
+
+  camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 800);
+  camera.position.set(0,15,25);
+
+  renderer = new THREE.WebGLRenderer({ antialias:true, preserveDrawingBuffer:true });
+  const iw = innerWidth || 1280, ih = innerHeight || 720;
+  renderer.setSize(iw, ih);
+  camera.aspect = iw/ih; camera.updateProjectionMatrix();
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  document.getElementById('game').appendChild(renderer.domElement);
+
+  hemi = new THREE.HemisphereLight(0xffffff, 0xb08040, 0.8);
+  scene.add(hemi);
+  sun = new THREE.DirectionalLight(0xffdca8, 1.4);
+  sun.position.set(40,80,40); sun.castShadow = true;
+  sun.shadow.mapSize.set(2048,2048);
+  const s=120; sun.shadow.camera.left=-s; sun.shadow.camera.right=s;
+  sun.shadow.camera.top=s; sun.shadow.camera.bottom=-s; sun.shadow.camera.far=300;
+  scene.add(sun);
+
+  groundMesh = makeGround();
+  scene.add(groundMesh);
+
+  // click-to-move destination marker (a glowing ring on the sand)
+  targetMarker = new THREE.Mesh(
+    new THREE.RingGeometry(0.5, 0.85, 24),
+    new THREE.MeshBasicMaterial({ color:0xffcf5c, transparent:true, opacity:0.9, side:THREE.DoubleSide })
+  );
+  targetMarker.rotation.x = -Math.PI/2;
+  targetMarker.visible = false;
+  scene.add(targetMarker);
+
+  // entities
+  boy = buildBoy(); scene.add(boy);
+  camel = buildCamel(); camel.scale.setScalar(0.55); camel.position.set(-5,0,-3); scene.add(camel);
+  falcon = buildFalcon(); falcon.visible=false; scene.add(falcon);
+
+  scatter();
+  // oases — more water sources spread across the map
+  makeOasis(40,30); makeOasis(-60,-45); makeOasis(20,-80); makeOasis(-90,60);
+  makeOasis(100,-30); makeOasis(-30,100); makeOasis(80,90); makeOasis(-110,-100);
+  // collectibles — plenty of plants and fruit to gather
+  for(let i=0;i<70;i++){ const x=rand(-WORLD,WORLD),z=rand(-WORLD,WORLD); makeCollectible('plant',x,z); }
+  for(let i=0;i<50;i++){ const x=rand(-WORLD,WORLD),z=rand(-WORLD,WORLD); makeCollectible('fruit',x,z); }
+  // animals
+  for(let i=0;i<22;i++) spawnAnimal();
+
+  // "Mubarak's World" name-plate signs — giant billboards visible from far across the dunes
+  makeSign(0, 26, "Mubarak's World", 5).rotation.y = Math.PI; // faces the player at start
+  makeSign(70, 70, "Mubarak's World", 5);
+  makeSign(-85, 55, "Mubarak's World", 5.5);
+  makeSign(40, -110, "Mubarak's World", 5);
+  makeSign(-120, -85, "Mubarak's World", 6);
+
+  // wild falcon perched on a rock somewhere
+  {
+    const fm = buildFalcon(); const x=rand(30,70), z=rand(-40,40);
+    fm.position.set(x, groundY(x,z)+6, z);
+    scene.add(fm);
+    falconWild = { mesh:fm, base:groundY(x,z)+6 };
+    // marker beam so it's findable
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,40,8),
+      new THREE.MeshBasicMaterial({ color:0xffe08a, transparent:true, opacity:0.25 }));
+    beam.position.set(x, groundY(x,z)+20, z); scene.add(beam);
+    falconWild.beam = beam;
+  }
+
+  initCameraControls();
+  addEventListener('resize', ()=>{
+    camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  // ensure correct size once the pane has real dimensions
+  requestAnimationFrame(()=>{
+    camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  clock = new THREE.Clock();
+  renderer.setAnimationLoop(loop);
+
+  // debug handle (used to capture still frames while the render loop runs)
+  window.__game = {
+    state, get boy(){return boy;}, get camel(){return camel;}, get camera(){return camera;},
+    get animals(){return animals;}, get collectibles(){return collectibles;},
+    stop(){ renderer.setAnimationLoop(null); renderer.render(scene,camera); },
+    start(){ renderer.setAnimationLoop(loop); },
+    step(n){ for(let i=0;i<(n||1);i++) update(1/60); renderer.render(scene,camera); }
+  };
+}
+
+function loop(){
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if(state.running) update(dt);
+  // fade wild-falcon beam once tamed
+  if(falconWild && falconWild.beam){
+    falconWild.beam.material.opacity = 0.2 + Math.sin(performance.now()*0.003)*0.1;
+  }
+  renderer.render(scene, camera);
+}
+
+/* ========================= BOOTSTRAP ============================ */
+document.getElementById('startBtn').addEventListener('click', ()=>{
+  document.getElementById('overlay').style.display='none';
+  document.getElementById('hud').style.display='';
+  state.running = true;
+  toast('Find water and plants — and look for the glowing beam: a wild falcon awaits!');
+  // fade the controls hint after a few seconds
+  setTimeout(()=>{ const h=document.getElementById('lockHint'); if(h) h.classList.remove('show'); }, 7000);
+});
+
+try {
+  init();
+} catch(err){
+  document.getElementById('loading').style.display='';
+  document.getElementById('startBtn').style.display='none';
+  document.getElementById('loading').textContent = 'Error loading 3D engine: ' + err.message;
+  console.error(err);
+}
+
+// register the service worker so the game installs & runs offline (needs http/https, not file://)
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js').catch(e=>console.warn('SW registration failed', e)));
+}
+</script>

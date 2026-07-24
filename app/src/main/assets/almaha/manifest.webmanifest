@@ -1,0 +1,16 @@
+{
+  "name": "MIESSI'S HAUNTED KINGDOM",
+  "short_name": "MIESSI",
+  "description": "A very scary 3D platformer — play as Yoshi, Neymar, or Toad and defeat Miessi, the Goat Monster.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0b0614",
+  "theme_color": "#0b0614",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

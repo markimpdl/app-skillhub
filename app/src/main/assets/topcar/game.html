@@ -1,0 +1,543 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scoop Server — Scoops &amp; Smiles</title>
+<style>
+  :root {
+    --pink: #ff6fa5;
+    --pink-deep: #e94f8a;
+    --cream: #fff7ef;
+    --ink: #4a3b3b;
+    --shadow: rgba(233, 79, 138, 0.22);
+    --good: #4bbf7b;
+    --bad: #ff5d5d;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Trebuchet MS', system-ui, sans-serif;
+    background: linear-gradient(180deg, #ffe6f2 0%, #fdeede 40%, #e9f7ff 100%);
+    background-attachment: fixed;
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+  }
+  .bg-scene { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+
+  .topbar {
+    width: 100%; max-width: 720px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .logo { font-weight: 800; color: var(--pink-deep); font-size: 1.2rem; display: flex; gap: 6px; align-items: center; }
+  .back { color: var(--pink-deep); font-weight: 700; text-decoration: none; font-size: 0.95rem; }
+  .back:hover { text-decoration: underline; }
+  .restart {
+    background: #fff; color: var(--pink-deep); border: 2px solid var(--pink);
+    padding: 7px 16px; border-radius: 999px; font-weight: 800; font-size: 0.9rem;
+    cursor: pointer; box-shadow: 0 6px 16px var(--shadow); transition: transform 0.15s, background 0.15s;
+  }
+  .restart:hover { transform: translateY(-2px); background: #fff0f6; }
+
+  .hud {
+    width: 100%; max-width: 720px;
+    display: flex; justify-content: space-between;
+    font-weight: 800; font-size: 1.2rem; margin-bottom: 12px;
+  }
+  .hud .lives { color: var(--pink-deep); letter-spacing: 2px; }
+
+  .stage {
+    position: relative;
+    width: 100%; max-width: 720px;
+    border-radius: 26px;
+    box-shadow: 0 20px 50px var(--shadow);
+    background: linear-gradient(180deg, #fffdfb 0%, #fff2f7 100%);
+    padding: 30px;
+    overflow: hidden;
+  }
+
+  /* ---- customer ---- */
+  .counter { display: flex; align-items: flex-start; gap: 20px; min-height: 150px; }
+  .customer { font-size: 4.8rem; line-height: 1; transition: transform 0.2s; }
+  .customer.happy { animation: bounce 0.5s; }
+  .customer.sad { animation: shakeX 0.4s; }
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 40%{transform:translateY(-14px) scale(1.1)} }
+  @keyframes shakeX { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+
+  .bubble {
+    position: relative; flex: 1;
+    background: #fff; border-radius: 18px; padding: 14px 16px;
+    box-shadow: 0 6px 18px var(--shadow);
+  }
+  .bubble::before {
+    content: ''; position: absolute; left: -10px; top: 22px;
+    border: 10px solid transparent; border-right-color: #fff; border-left: 0;
+  }
+  .bubble .say { font-weight: 700; font-size: 1.1rem; margin-bottom: 12px; color: #7a6a6a; }
+  .order-scoops { display: flex; gap: 10px; flex-wrap: wrap; }
+  .order-scoops .oscoop {
+    width: 44px; height: 44px; border-radius: 50%;
+    box-shadow: inset 0 -3px 6px rgba(0,0,0,0.12), 0 3px 6px rgba(0,0,0,0.08);
+    position: relative;
+  }
+  .order-scoops .oscoop::after {
+    content: ''; position: absolute; top: 6px; left: 7px;
+    width: 8px; height: 11px; border-radius: 50%; background: rgba(255,255,255,0.4);
+  }
+
+  .patience-wrap { margin-top: 14px; height: 16px; background: #f1e2d6; border-radius: 999px; overflow: hidden; }
+  .patience-bar { height: 100%; width: 100%; background: linear-gradient(90deg, var(--good), #9fe0b8); transition: width 0.1s linear, background 0.3s; border-radius: 999px; }
+
+  /* ---- build area ---- */
+  .build {
+    margin: 22px 0 6px; display: flex; flex-direction: column; align-items: center;
+    min-height: 200px; justify-content: flex-end;
+  }
+  .stack { display: flex; flex-direction: column-reverse; align-items: center; margin-bottom: -6px; }
+  .stack .bscoop {
+    width: 80px; height: 58px; border-radius: 50%;
+    margin-bottom: -22px;
+    box-shadow: inset 0 -4px 8px rgba(0,0,0,0.12), 0 3px 6px rgba(0,0,0,0.1);
+    animation: plop 0.22s ease;
+  }
+  @keyframes plop { 0%{transform:scale(0.3) translateY(-30px); opacity:0} 100%{transform:scale(1) translateY(0); opacity:1} }
+  .cone-shape {
+    width: 0; height: 0;
+    border-left: 40px solid transparent;
+    border-right: 40px solid transparent;
+    border-top: 92px solid #e7b57e;
+    margin-top: 4px;
+    filter: drop-shadow(0 6px 8px rgba(0,0,0,0.12));
+  }
+  .empty-hint { color: #c3b2a6; font-weight: 700; font-size: 0.9rem; margin-bottom: 20px; }
+
+  /* ---- palette ---- */
+  .palette {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 16px;
+  }
+  .flavor-btn {
+    border: none; background: #fff; border-radius: 18px; padding: 14px 8px;
+    cursor: pointer; box-shadow: 0 5px 14px var(--shadow);
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    font-weight: 700; font-size: 0.9rem; color: var(--ink);
+    transition: transform 0.12s;
+  }
+  .flavor-btn:hover { transform: translateY(-3px); }
+  .flavor-btn:active { transform: scale(0.94); }
+  .flavor-btn .dot {
+    width: 40px; height: 40px; border-radius: 50%;
+    box-shadow: inset 0 -3px 6px rgba(0,0,0,0.12);
+  }
+
+  .actions { display: flex; gap: 16px; margin-top: 18px; }
+  .act {
+    flex: 1; border: none; border-radius: 999px; padding: 18px;
+    font-weight: 800; font-size: 1.2rem; cursor: pointer; transition: transform 0.12s;
+  }
+  .act:active { transform: scale(0.96); }
+  .serve { background: var(--pink); color: #fff; box-shadow: 0 10px 24px var(--shadow); }
+  .clear { background: #fff; color: var(--pink-deep); box-shadow: 0 6px 16px var(--shadow); border: 2px solid #ffd6e6; }
+
+  /* ---- overlay ---- */
+  .overlay {
+    position: absolute; inset: 0; z-index: 5;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; background: rgba(255, 247, 239, 0.94); backdrop-filter: blur(4px);
+    padding: 30px; gap: 12px;
+  }
+  .overlay.hidden { display: none; }
+  .overlay h1 { font-size: 2rem; color: var(--pink-deep); }
+  .overlay p { font-size: 1rem; color: #7a6a6a; max-width: 360px; }
+  .overlay .big { font-size: 1.3rem; font-weight: 800; color: var(--ink); }
+  .btn {
+    margin-top: 6px; background: var(--pink); color: #fff; border: none;
+    padding: 15px 34px; border-radius: 999px; font-weight: 800; font-size: 1.05rem;
+    cursor: pointer; box-shadow: 0 10px 26px var(--shadow); transition: transform 0.15s;
+  }
+  .btn:hover { transform: translateY(-3px); }
+
+  .diffs { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 280px; margin-top: 4px; }
+  .diff { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px; }
+  .diff small { font-weight: 600; font-size: 0.72rem; opacity: 0.9; }
+  .diff.easy { background: var(--good); }
+  .diff.hard { background: #f2932e; }
+  .diff.impossible { background: #c0392b; }
+  .diff.locked {
+    background: #cdbfb4 !important; color: #fff8f2; cursor: not-allowed;
+    box-shadow: none; opacity: 0.85;
+  }
+  .diff.locked:hover { transform: none; }
+
+  .diff-badge {
+    font-size: 0.7rem; font-weight: 800; color: #fff; background: var(--pink);
+    padding: 3px 10px; border-radius: 999px; margin-left: 4px; vertical-align: middle;
+  }
+  .diff-badge.easy { background: var(--good); }
+  .diff-badge.hard { background: #f2932e; }
+  .diff-badge.impossible { background: #c0392b; }
+  .diff-badge:empty { display: none; }
+
+  .toast {
+    position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+    background: var(--good); color: #fff; font-weight: 800; padding: 8px 20px;
+    border-radius: 999px; opacity: 0; pointer-events: none; z-index: 6;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(4px); }
+  .toast.bad { background: var(--bad); }
+</style>
+
+<svg class="bg-scene" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" viewBox="0 0 1200 900" aria-hidden="true">
+  <defs>
+    <g id="cone">
+      <path d="M-13 0 L13 0 L0 34 Z" fill="#e7b57e"/>
+      <circle cx="0" cy="-6" r="15" fill="#ff9ec4"/>
+      <circle cx="0" cy="-1" r="4" fill="#ff4d6d"/>
+    </g>
+    <g id="sprinkles" stroke-width="5" stroke-linecap="round">
+      <line x1="0" y1="0" x2="10" y2="6" stroke="#ff6fa5"/>
+      <line x1="20" y1="-4" x2="27" y2="6" stroke="#5ec9ff"/>
+      <line x1="40" y1="2" x2="52" y2="0" stroke="#ffd166"/>
+      <line x1="12" y1="16" x2="20" y2="24" stroke="#7fd4c1"/>
+      <line x1="36" y1="18" x2="46" y2="16" stroke="#b79ced"/>
+    </g>
+    <pattern id="land" width="300" height="260" patternUnits="userSpaceOnUse">
+      <use href="#cone" x="70" y="70" opacity="0.5"/>
+      <use href="#cone" x="230" y="200" opacity="0.42" transform="rotate(8 230 200)"/>
+      <use href="#sprinkles" x="180" y="40" opacity="0.55"/>
+      <use href="#sprinkles" x="10" y="180" opacity="0.5"/>
+      <circle cx="255" cy="60" r="6" fill="#ffb3d1" opacity="0.5"/>
+      <circle cx="120" cy="210" r="5" fill="#a9deff" opacity="0.5"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="900" fill="url(#land)"/>
+  <g fill="#ffffff" opacity="0.65">
+    <ellipse cx="180" cy="90" rx="70" ry="30"/>
+    <ellipse cx="230" cy="80" rx="50" ry="26"/>
+    <ellipse cx="960" cy="140" rx="80" ry="32"/>
+    <ellipse cx="1020" cy="130" rx="55" ry="26"/>
+  </g>
+</svg>
+
+<div class="topbar">
+  <div class="logo">🍦 Scoop Server <span class="diff-badge" id="diffBadge"></span></div>
+  <div style="display:flex; gap:12px; align-items:center;">
+    <button class="restart" id="restartBtn">🔄 Play Again</button>
+    <a class="back" href="index.html">← Back to shop</a>
+  </div>
+</div>
+
+<div class="hud">
+  <div>⏱️ <span id="time">5:00</span></div>
+  <div>Score: <span id="score">0</span></div>
+  <div>Served: <span id="served">0</span></div>
+  <div>Best: <span id="best">0</span></div>
+  <div class="lives" id="lives">❤️❤️❤️</div>
+</div>
+
+<div class="stage" id="stage">
+  <div class="toast" id="toast"></div>
+
+  <div class="counter">
+    <div class="customer" id="customer">🧒</div>
+    <div class="bubble">
+      <div class="say" id="say">I'd like…</div>
+      <div class="order-scoops" id="order"></div>
+      <div class="patience-wrap"><div class="patience-bar" id="patience"></div></div>
+    </div>
+  </div>
+
+  <div class="build" id="build">
+    <div class="stack" id="stack"></div>
+    <div class="cone-shape"></div>
+  </div>
+
+  <div class="palette" id="palette"></div>
+
+  <div class="actions">
+    <button class="act clear" id="clearBtn">🗑️ Clear</button>
+    <button class="act serve" id="serveBtn">🍦 Serve!</button>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <h1>🍦 Scoop Server</h1>
+    <p>Customers will tell you which scoops they want. <b>Tap the flavors</b> to build the cone in the right order, then hit <b>Serve!</b> before their patience runs out.</p>
+    <p>Wrong order or a timeout costs a life. You have <b>3 lives</b> — how many can you serve?</p>
+    <p class="big" id="msg"></p>
+    <p style="font-weight:700;color:var(--pink-deep);margin-top:4px;">Pick your difficulty:</p>
+    <div class="diffs" id="diffs">
+      <button class="btn diff easy" data-diff="easy">😊 Easy <small>Patient customers, gentle ramp</small></button>
+      <button class="btn diff hard" data-diff="hard">😅 Hard <small>Impatient, bigger orders faster</small></button>
+      <button class="btn diff impossible" data-diff="impossible">💀 Impossible <small>Blink and they're gone</small></button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const FLAVORS = [
+    { id: 'strawberry', name: 'Strawberry', color: '#ff6f8d' },
+    { id: 'chocolate',  name: 'Chocolate',  color: '#7a4a2b' },
+    { id: 'vanilla',    name: 'Vanilla',    color: '#f4e2b8' },
+    { id: 'mint',       name: 'Mint',       color: '#8fd694' },
+    { id: 'blueberry',  name: 'Blueberry',  color: '#5ec9ff' },
+    { id: 'grape',      name: 'Grape',      color: '#b79ced' },
+    { id: 'lemon',      name: 'Lemon',      color: '#ffe066' },
+    { id: 'mango',      name: 'Mango',      color: '#ffb14a' },
+  ];
+  const FACES = ['🧒','👦','👧','🧑','👩','👨','👵','👴','🧕','👱','🧑‍🎤','👩‍🦰'];
+  const byId = id => FLAVORS.find(f => f.id === id);
+
+  const DIFFICULTIES = {
+    easy:       { label: 'EASY',       emoji: '😊', level: 1, goal: 5,  basePatience: 13,  patienceStep: 0.15, patienceMin: 7,   rampEvery: 5, maxScoops: 3 },
+    hard:       { label: 'HARD',       emoji: '😅', level: 2, goal: 8,  basePatience: 8,   patienceStep: 0.35, patienceMin: 4.5, rampEvery: 3, maxScoops: 4 },
+    impossible: { label: 'IMPOSSIBLE', emoji: '💀', level: 3, goal: 12, basePatience: 4.2, patienceStep: 0.45, patienceMin: 2,   rampEvery: 2, maxScoops: 4 },
+  };
+  const MAX_LEVEL = 3;
+
+  const el = id => document.getElementById(id);
+  const scoreEl = el('score'), servedEl = el('served'), bestEl = el('best'),
+        livesEl = el('lives'), orderEl = el('order'), stackEl = el('stack'),
+        paletteEl = el('palette'), customerEl = el('customer'), sayEl = el('say'),
+        patienceEl = el('patience'), overlay = el('overlay'), toastEl = el('toast'),
+        msgEl = el('msg'), diffBadge = el('diffBadge'), timeEl = el('time');
+
+  const ROUND_SECONDS = 300;   // 5 minutes
+  let score = 0, served = 0, lives = 3, timeLeft = ROUND_SECONDS;
+  let best = Number(localStorage.getItem('scoopServeBest') || 0);
+  let order = [], built = [];
+  let patience = 1, patienceMax = 9, running = false;
+  let lastTs = 0, rafId = null;
+  let currentDiffKey = 'easy', diff = DIFFICULTIES.easy;
+  let unlocked = Number(localStorage.getItem('scoopUnlocked') || 1);
+
+  bestEl.textContent = best;
+
+  // build palette once
+  FLAVORS.forEach(f => {
+    const b = document.createElement('button');
+    b.className = 'flavor-btn';
+    b.innerHTML = `<span class="dot" style="background:${f.color}"></span>${f.name}`;
+    b.addEventListener('click', () => addScoop(f.id));
+    paletteEl.appendChild(b);
+  });
+
+  function updateHud() {
+    scoreEl.textContent = score;
+    servedEl.textContent = served + ' / ' + diff.goal;
+    livesEl.textContent = '❤️'.repeat(Math.max(0, lives)) + '🤍'.repeat(Math.max(0, 3 - lives));
+  }
+
+  function updateTime() {
+    const t = Math.max(0, Math.ceil(timeLeft));
+    const m = Math.floor(t / 60), s = t % 60;
+    timeEl.textContent = m + ':' + String(s).padStart(2, '0');
+    timeEl.style.color = timeLeft <= 30 ? '#e94f8a' : '';
+  }
+
+  function renderOrder() {
+    orderEl.innerHTML = '';
+    order.forEach(id => {
+      const s = document.createElement('div');
+      s.className = 'oscoop';
+      s.style.background = byId(id).color;
+      orderEl.appendChild(s);
+    });
+  }
+
+  function renderStack() {
+    stackEl.innerHTML = '';
+    built.forEach(id => {
+      const s = document.createElement('div');
+      s.className = 'bscoop';
+      s.style.background = byId(id).color;
+      stackEl.appendChild(s);
+    });
+  }
+
+  function newCustomer() {
+    const size = Math.min(diff.maxScoops, 1 + Math.floor(served / diff.rampEvery));
+    order = [];
+    for (let i = 0; i < size; i++) {
+      order.push(FLAVORS[(Math.random() * FLAVORS.length) | 0].id);
+    }
+    built = [];
+    patienceMax = Math.max(diff.patienceMin, diff.basePatience - served * diff.patienceStep);
+    patience = 1;
+    customerEl.textContent = FACES[(Math.random() * FACES.length) | 0];
+    customerEl.className = 'customer';
+    sayEl.textContent = size === 1 ? 'One scoop please!' : `${size} scoops, bottom to top:`;
+    renderOrder();
+    renderStack();
+    updatePatienceBar();
+  }
+
+  function updatePatienceBar() {
+    patienceEl.style.width = (patience * 100) + '%';
+    patienceEl.style.background = patience > 0.5
+      ? 'linear-gradient(90deg,#4bbf7b,#9fe0b8)'
+      : patience > 0.25
+        ? 'linear-gradient(90deg,#f2b134,#ffd98a)'
+        : 'linear-gradient(90deg,#ff5d5d,#ff9a9a)';
+  }
+
+  function addScoop(id) {
+    if (!running) return;
+    if (built.length >= order.length) { toast('Cone is full — Serve or Clear!', true); return; }
+    built.push(id);
+    renderStack();
+  }
+
+  function clearCone() {
+    if (!running) return;
+    built = [];
+    renderStack();
+  }
+
+  function toast(text, bad) {
+    toastEl.textContent = text;
+    toastEl.className = 'toast show' + (bad ? ' bad' : '');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => { toastEl.className = 'toast' + (bad ? ' bad' : ''); }, 1100);
+  }
+
+  function serve() {
+    if (!running) return;
+    if (built.length === 0) { toast('Add some scoops first!', true); return; }
+    const correct = built.length === order.length && built.every((id, i) => id === order[i]);
+    if (correct) {
+      const bonus = Math.round(patience * 10);
+      const pts = 10 * order.length + bonus;
+      score += pts;
+      served++;
+      customerEl.className = 'customer happy';
+      toast(`+${pts}! 😊`, false);
+      updateHud();
+      if (served >= diff.goal) {      // level cleared!
+        running = false;
+        setTimeout(levelComplete, 650);
+        return;
+      }
+      setTimeout(newCustomer, 550);
+      running = false;               // pause input during the little celebration
+      setTimeout(() => { running = true; }, 550);
+    } else {
+      loseLife('Wrong order! 😖');
+    }
+  }
+
+  function loseLife(reason) {
+    lives--;
+    updateHud();
+    customerEl.className = 'customer sad';
+    toast(reason, true);
+    if (lives <= 0) { gameOver(); return; }
+    built = [];
+    renderStack();
+    running = false;
+    setTimeout(() => { running = true; newCustomer(); }, 700);
+  }
+
+  function tick(ts) {
+    if (!lastTs) lastTs = ts;
+    const dt = (ts - lastTs) / 1000; lastTs = ts;
+    if (running) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) {
+        timeLeft = 0;
+        updateTime();
+        gameOver(true);
+      } else {
+        updateTime();
+        patience -= dt / patienceMax;
+        if (patience <= 0) {
+          patience = 0;
+          updatePatienceBar();
+          loseLife('Too slow! 😤');
+        } else {
+          updatePatienceBar();
+        }
+      }
+    }
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function bestKey() { return 'scoopServeBest_' + currentDiffKey; }
+
+  function start(diffKey) {
+    currentDiffKey = diffKey || currentDiffKey;
+    diff = DIFFICULTIES[currentDiffKey];
+    best = Number(localStorage.getItem(bestKey()) || 0);
+    bestEl.textContent = best;
+    diffBadge.textContent = 'LVL ' + diff.level + ' · ' + diff.label;
+    diffBadge.className = 'diff-badge ' + currentDiffKey;
+    score = 0; served = 0; lives = 3; timeLeft = ROUND_SECONDS;
+    updateHud();
+    updateTime();
+    overlay.classList.add('hidden');
+    running = true;
+    lastTs = 0;
+    newCustomer();
+    if (!rafId) rafId = requestAnimationFrame(tick);
+  }
+
+  function renderMenu() {
+    unlocked = Number(localStorage.getItem('scoopUnlocked') || 1);
+    document.querySelectorAll('.diff').forEach(b => {
+      const d = DIFFICULTIES[b.dataset.diff];
+      const isOpen = d.level <= unlocked;
+      b.disabled = !isOpen;
+      b.classList.toggle('locked', !isOpen);
+      b.innerHTML = isOpen
+        ? `${d.emoji} Level ${d.level} · ${d.label} <small>Serve ${d.goal} customers to clear</small>`
+        : `🔒 Level ${d.level} · ${d.label} <small>Clear Level ${d.level - 1} to unlock</small>`;
+    });
+  }
+
+  function showMenu() {
+    running = false;
+    overlay.querySelector('h1').textContent = '🍦 Scoop Server';
+    msgEl.textContent = '';
+    renderMenu();
+    overlay.classList.remove('hidden');
+  }
+
+  function levelComplete() {
+    running = false;
+    if (score > best) { best = score; localStorage.setItem(bestKey(), best); bestEl.textContent = best; }
+    const next = diff.level + 1;
+    let unlockedNext = false;
+    if (next <= MAX_LEVEL && unlocked < next) {
+      unlocked = next;
+      localStorage.setItem('scoopUnlocked', unlocked);
+      unlockedNext = true;
+    }
+    overlay.querySelector('h1').textContent = '🎉 Level Complete!';
+    msgEl.textContent = next > MAX_LEVEL
+      ? `You beat the final level with ${score} points! You're a true Scoop Master! 🏆`
+      : unlockedNext
+        ? `You cleared Level ${diff.level} (${diff.label})! 🔓 Level ${next} is now unlocked — pick it below!`
+        : `You cleared Level ${diff.level} again with ${score} points! 🍨`;
+    renderMenu();
+    overlay.classList.remove('hidden');
+  }
+
+  function gameOver(timeUp) {
+    running = false;
+    if (score > best) { best = score; localStorage.setItem(bestKey(), best); bestEl.textContent = best; }
+    overlay.querySelector('h1').textContent = timeUp ? "⏰ Time's Up!" : 'Shop Closed! 🕒';
+    msgEl.textContent = `You served ${served} of ${diff.goal} on Level ${diff.level} (${diff.label}) for ${score} points. 🍨 Try again?`;
+    renderMenu();
+    overlay.classList.remove('hidden');
+  }
+
+  el('serveBtn').addEventListener('click', serve);
+  el('clearBtn').addEventListener('click', clearCone);
+  document.querySelectorAll('.diff').forEach(b => {
+    b.addEventListener('click', () => start(b.dataset.diff));
+  });
+  el('restartBtn').addEventListener('click', showMenu);
+  renderMenu();
+})();
+</script>

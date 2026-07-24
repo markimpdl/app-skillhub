@@ -1,0 +1,16 @@
+{
+  "name": "Mubarak's World — Desert Journey",
+  "short_name": "Mubarak's World",
+  "description": "A 3D desert adventure — a boy and his camel explore, gather, hunt and grow.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#1a1108",
+  "theme_color": "#e3b878",
+  "icons": [
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
